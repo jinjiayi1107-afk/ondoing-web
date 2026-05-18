@@ -919,8 +919,23 @@ function ProgressModal({
   onSave: (latest: string) => void
 }) {
   const [latest, setLatest] = useState('')
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
   return (
-    <div className="modal-backdrop">
+    <div
+      className="modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
       <section className="modal compact-modal">
         <h2>新增进度</h2>
         <p className="modal-task-title">{task.project || task.id}</p>
