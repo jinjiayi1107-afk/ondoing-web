@@ -34,9 +34,11 @@ The import uses the logged-in user's Supabase session, so no service role key is
 
 ## GitHub Pages
 
-Create the repository `jinjiayi1107-afk/ondoing-web`, push this project to `main`, then enable GitHub Pages with GitHub Actions as the source.
+Create the repository `jinjiayi1107-afk/ondoing-web`, push this project to `main`, then enable GitHub Pages with:
 
-If your local GitHub token does not have the `workflow` scope, create `.github/workflows/pages.yml` in the GitHub web UI and paste the contents from `docs/pages.workflow.example.yml`.
+- Source: Deploy from a branch
+- Branch: `main`
+- Folder: `/docs`
 
 Optional repository variables:
 
