@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   CheckCircle2,
   ClipboardList,
@@ -152,6 +152,9 @@ function Dashboard({ session }: { session: Session }) {
   const [taskDraft, setTaskDraft] = useState<TaskDraft | null>(null)
   const [taskOriginalLatest, setTaskOriginalLatest] = useState('')
   const [paymentDraft, setPaymentDraft] = useState<PaymentDraft | null>(null)
+  const [progressTask, setProgressTask] = useState<Task | null>(null)
+  const [detailTask, setDetailTask] = useState<Task | null>(null)
+  const clickTimer = useRef<number | null>(null)
   const [taskSort, setTaskSort] = useState<{ key: TaskSortKey; direction: SortDirection }>({
     key: 'status',
     direction: 'asc',
@@ -251,6 +254,37 @@ function Dashboard({ session }: { session: Session }) {
     const { error } = await supabase.from('tasks').upsert(next)
     if (error) return setNotice(error.message)
     await loadAll()
+  }
+
+  async function saveTaskProgress(task: Task, latest: string) {
+    const text = latest.trim()
+    if (!text) return
+    const draft: TaskDraft = {
+      ...task,
+      latest: text,
+      status: statusFromLatest(task.status, text),
+      history: appendHistory({ ...task, latest: text, updated_at: nowIso() }, task.latest),
+      updated_at: nowIso(),
+    }
+    const next: Task = { ...draft, user_id: userId }
+    const { error } = await supabase.from('tasks').upsert(next)
+    if (error) return setNotice(error.message)
+    setProgressTask(null)
+    await loadAll()
+  }
+
+  function handleTaskRowClick(task: Task) {
+    if (clickTimer.current) window.clearTimeout(clickTimer.current)
+    clickTimer.current = window.setTimeout(() => {
+      setProgressTask(task)
+      clickTimer.current = null
+    }, 180)
+  }
+
+  function handleTaskRowDoubleClick(task: Task) {
+    if (clickTimer.current) window.clearTimeout(clickTimer.current)
+    clickTimer.current = null
+    setDetailTask(task)
   }
 
   function openNewPayment() {
@@ -416,6 +450,8 @@ function Dashboard({ session }: { session: Session }) {
                   tasks={filteredTasks}
                   sort={taskSort}
                   onSort={toggleTaskSort}
+                  onRowClick={handleTaskRowClick}
+                  onRowDoubleClick={handleTaskRowDoubleClick}
                   onEdit={openEditTask}
                   onDone={quickDone}
                   onDelete={deleteTask}
@@ -448,6 +484,23 @@ function Dashboard({ session }: { session: Session }) {
           setDraft={setPaymentDraft}
           onClose={() => setPaymentDraft(null)}
           onSave={savePayment}
+        />
+      )}
+      {progressTask && (
+        <ProgressModal
+          task={progressTask}
+          onClose={() => setProgressTask(null)}
+          onSave={(latest) => saveTaskProgress(progressTask, latest)}
+        />
+      )}
+      {detailTask && (
+        <TaskDetailModal
+          task={detailTask}
+          onClose={() => setDetailTask(null)}
+          onEdit={() => {
+            setDetailTask(null)
+            openEditTask(detailTask)
+          }}
         />
       )}
     </div>
@@ -602,13 +655,15 @@ function TaskTable(props: {
   tasks: Task[]
   sort: { key: TaskSortKey; direction: SortDirection }
   onSort: (key: TaskSortKey) => void
+  onRowClick: (task: Task) => void
+  onRowDoubleClick: (task: Task) => void
   onEdit: (task: Task) => void
   onDone: (task: Task) => void
   onDelete: (task: Task) => void
 }) {
   return (
     <div className="table-wrap">
-      <table>
+      <table className="task-table">
         <thead>
           <tr>
             <th><SortButton label="ID" column="id" sort={props.sort} onSort={props.onSort} /></th>
@@ -622,7 +677,13 @@ function TaskTable(props: {
         </thead>
         <tbody>
           {props.tasks.map((task) => (
-            <tr className={`task-row ${statusClass(task.status)}`} key={task.id}>
+            <tr
+              className={`task-row ${statusClass(task.status)}`}
+              key={task.id}
+              onClick={() => props.onRowClick(task)}
+              onDoubleClick={() => props.onRowDoubleClick(task)}
+              title="单击新增进度，双击查看详情"
+            >
               <td data-label="ID">{task.id}</td>
               <td data-label="项目">{task.project}</td>
               <td data-label="状态"><span className={`status-badge ${statusClass(task.status)}`}>{task.status}</span></td>
@@ -630,7 +691,7 @@ function TaskTable(props: {
               <td data-label="负责人">{task.owner}</td>
               <td data-label="更新">{task.updated_at?.slice(0, 10) || task.created_date}</td>
               <td data-label="操作">
-                <div className="table-actions">
+                <div className="table-actions" onClick={(event) => event.stopPropagation()}>
                   <button className="icon-button" title="编辑" aria-label="编辑任务" onClick={() => props.onEdit(task)}><Edit3 size={15} /></button>
                   <button className="icon-button" title="完成" aria-label="标记完成" onClick={() => props.onDone(task)}><CheckCircle2 size={15} /></button>
                   <button className="icon-button" title="删除" aria-label="删除任务" onClick={() => props.onDelete(task)}><Trash2 size={15} /></button>
@@ -644,6 +705,72 @@ function TaskTable(props: {
   )
 }
 
+function ProgressModal({
+  task,
+  onClose,
+  onSave,
+}: {
+  task: Task
+  onClose: () => void
+  onSave: (latest: string) => void
+}) {
+  const [latest, setLatest] = useState('')
+  return (
+    <div className="modal-backdrop">
+      <section className="modal compact-modal">
+        <h2>新增进度</h2>
+        <p className="modal-task-title">{task.project || task.id}</p>
+        <label className="stack-label">
+          新进度
+          <textarea
+            className="textarea"
+            autoFocus
+            value={latest}
+            onChange={(event) => setLatest(event.target.value)}
+            placeholder="输入新的处理进展；如果填写“已完成”，状态会自动变为已完成。"
+          />
+        </label>
+        <div className="modal-actions">
+          <button className="ghost-button" onClick={onClose}>取消</button>
+          <button className="primary-button" onClick={() => onSave(latest)} disabled={!latest.trim()}>保存进度</button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function TaskDetailModal({
+  task,
+  onClose,
+  onEdit,
+}: {
+  task: Task
+  onClose: () => void
+  onEdit: () => void
+}) {
+  return (
+    <div className="modal-backdrop">
+      <section className="modal detail-modal">
+        <h2>任务详情</h2>
+        <div className="detail-grid">
+          <span>ID</span><strong>{task.id}</strong>
+          <span>项目</span><strong>{task.project || '-'}</strong>
+          <span>状态</span><strong><span className={`status-badge ${statusClass(task.status)}`}>{task.status}</span></strong>
+          <span>负责人</span><strong>{task.owner || '-'}</strong>
+          <span>创建</span><strong>{task.created_date || '-'}</strong>
+          <span>更新</span><strong>{task.updated_at?.slice(0, 16).replace('T', ' ') || '-'}</strong>
+          <span>最新进展</span><strong className="detail-text">{task.latest || '-'}</strong>
+          <span>历史记录</span><strong className="detail-text prewrap">{task.history || '-'}</strong>
+        </div>
+        <div className="modal-actions">
+          <button className="ghost-button" onClick={onClose}>关闭</button>
+          <button className="primary-button" onClick={onEdit}>编辑任务</button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function PaymentTable(props: {
   payments: Payment[]
   sort: { key: PaymentSortKey; direction: SortDirection }
@@ -653,7 +780,7 @@ function PaymentTable(props: {
 }) {
   return (
     <div className="table-wrap">
-      <table>
+      <table className="payment-table">
         <thead>
           <tr>
             <th><SortButton label="日期" column="payment_date" sort={props.sort} onSort={props.onSort} /></th>
