@@ -1,0 +1,415 @@
+.app-shell {
+  min-height: 100svh;
+  color: #2d2a26;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(246, 242, 236, 0.92)),
+    #f6f2ec;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 24px;
+  border-bottom: 1px solid #e4ded4;
+  background: rgba(251, 249, 245, 0.94);
+  backdrop-filter: blur(16px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: #ffffff;
+  border-radius: 8px;
+  background: #25745c;
+}
+
+.brand h1 {
+  margin: 0;
+  color: #1f1b16;
+  font-size: 21px;
+  line-height: 1.1;
+}
+
+.brand p,
+.user-email,
+.muted {
+  margin: 0;
+  color: #77706a;
+  font-size: 13px;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 246px minmax(0, 1fr);
+  min-height: calc(100svh - 67px);
+}
+
+.sidebar {
+  padding: 18px;
+  border-right: 1px solid #e4ded4;
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.main {
+  padding: 22px;
+  min-width: 0;
+}
+
+.nav-stack,
+.summary-stack,
+.form-grid,
+.modal-actions,
+.toolbar,
+.table-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-stack,
+.summary-stack {
+  flex-direction: column;
+}
+
+.nav-button,
+.icon-button,
+.primary-button,
+.ghost-button,
+.danger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #d9d1c6;
+  border-radius: 7px;
+  color: #2d2a26;
+  background: #fffdf9;
+}
+
+.nav-button {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.nav-button.active,
+.primary-button {
+  color: #ffffff;
+  border-color: #25745c;
+  background: #25745c;
+}
+
+.ghost-button {
+  background: transparent;
+}
+
+.danger-button {
+  color: #9d261d;
+  border-color: #efc3bd;
+  background: #fff7f5;
+}
+
+.icon-button {
+  width: 38px;
+  padding: 0;
+}
+
+.summary-card,
+.panel,
+.modal,
+.login-card {
+  border: 1px solid #e2dbd0;
+  border-radius: 8px;
+  background: #fffdf9;
+  box-shadow: 0 14px 44px rgba(57, 46, 31, 0.08);
+}
+
+.summary-card {
+  padding: 14px;
+}
+
+.summary-card strong {
+  display: block;
+  color: #1f1b16;
+  font-size: 23px;
+}
+
+.summary-card span {
+  color: #77706a;
+  font-size: 13px;
+}
+
+.panel {
+  overflow: hidden;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid #ebe5dc;
+}
+
+.panel-title {
+  margin: 0;
+  color: #1f1b16;
+  font-size: 18px;
+}
+
+.toolbar {
+  flex-wrap: wrap;
+}
+
+.search-input,
+.field,
+.textarea {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  color: #2d2a26;
+  border: 1px solid #d9d1c6;
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.content-area {
+  padding: 16px;
+}
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  gap: 14px;
+  overflow-x: auto;
+}
+
+.kanban-column {
+  min-height: 420px;
+  padding: 12px;
+  border: 1px solid #e4ded4;
+  border-radius: 8px;
+  background: #f8f5ef;
+}
+
+.column-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  color: #4a453f;
+  font-weight: 700;
+}
+
+.task-card {
+  margin-bottom: 10px;
+  padding: 12px;
+  border: 1px solid #e1d9cf;
+  border-left: 4px solid #9a8f82;
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.task-card.done {
+  border-left-color: #bf5f55;
+}
+
+.task-card.doing {
+  border-left-color: #25745c;
+}
+
+.task-card.paused {
+  border-left-color: #a6a09a;
+}
+
+.task-card h3 {
+  margin: 0 0 8px;
+  color: #1f1b16;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  color: #77706a;
+  font-size: 12px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #4a453f;
+  background: #eee8de;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 780px;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 11px 12px;
+  border-bottom: 1px solid #eee8de;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #5e574f;
+  font-size: 12px;
+  text-transform: uppercase;
+  background: #faf7f2;
+}
+
+.login-wrap {
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  padding: 24px;
+}
+
+.login-card {
+  width: min(440px, 100%);
+  padding: 24px;
+}
+
+.login-card h1 {
+  margin: 12px 0 8px;
+  color: #1f1b16;
+  font-size: 28px;
+}
+
+.form-grid {
+  flex-direction: column;
+}
+
+.form-grid label {
+  display: grid;
+  gap: 6px;
+  color: #5e574f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(45, 42, 38, 0.28);
+}
+
+.modal {
+  width: min(720px, 100%);
+  max-height: calc(100svh - 40px);
+  overflow: auto;
+  padding: 20px;
+}
+
+.modal h2 {
+  margin: 0 0 16px;
+}
+
+.modal-actions {
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.notice {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  color: #5f420d;
+  border: 1px solid #ead39d;
+  border-radius: 7px;
+  background: #fff8e3;
+}
+
+.error {
+  color: #9d261d;
+}
+
+@media (max-width: 980px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid #e4ded4;
+  }
+
+  .nav-stack {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .nav-button {
+    width: auto;
+    white-space: nowrap;
+  }
+
+  .kanban-board {
+    grid-template-columns: repeat(4, 260px);
+  }
+}
+
+@media (max-width: 680px) {
+  .topbar,
+  .panel-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .main {
+    padding: 12px;
+  }
+
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+}
