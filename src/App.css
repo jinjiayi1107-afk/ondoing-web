@@ -20,6 +20,7 @@
   --radius-md: 8px;
   --shadow-sm: 0 1px 2px rgba(21, 34, 50, 0.08);
   --shadow-md: 0 14px 40px rgba(21, 34, 50, 0.12);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --tap: 44px;
 }
 
@@ -61,6 +62,14 @@
   border-radius: var(--radius-md);
   background: var(--primary);
   box-shadow: var(--shadow-sm);
+  transition:
+    transform 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out);
+}
+
+.brand:hover .brand-mark {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(35, 116, 95, 0.2);
 }
 
 .brand h1 {
@@ -124,9 +133,9 @@
 }
 
 .summary-stack {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
 }
 
 .nav-button,
@@ -150,7 +159,8 @@
     background 160ms ease,
     border-color 160ms ease,
     color 160ms ease,
-    transform 120ms ease;
+    transform 120ms ease,
+    box-shadow 160ms ease;
 }
 
 .nav-button:hover,
@@ -158,6 +168,8 @@
 .ghost-button:hover {
   border-color: var(--border-strong);
   background: var(--surface-muted);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(21, 34, 50, 0.1);
 }
 
 .nav-button:active,
@@ -229,28 +241,36 @@
 
 .summary-card {
   min-width: 0;
-  padding: 9px 8px;
+  padding: 8px 9px;
+  transition:
+    border-color 160ms ease,
+    transform 160ms var(--ease-out),
+    box-shadow 160ms ease;
+}
+
+.summary-card:hover {
+  border-color: var(--border-strong);
+  transform: translateX(2px);
+  box-shadow: 0 6px 18px rgba(21, 34, 50, 0.08);
 }
 
 .summary-card strong {
   display: block;
   color: var(--text);
-  overflow: hidden;
-  font-size: 19px;
+  font-size: 18px;
   font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.16;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .summary-card span {
   display: block;
-  overflow: hidden;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .panel {
@@ -291,7 +311,14 @@
   background: #ffffff;
   transition:
     border-color 160ms ease,
-    box-shadow 160ms ease;
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.search-input:focus,
+.field:focus,
+.textarea:focus {
+  transform: translateY(-1px);
 }
 
 .textarea {
@@ -356,6 +383,16 @@
   border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
+  transition:
+    transform 170ms var(--ease-out),
+    border-color 170ms ease,
+    box-shadow 170ms ease;
+}
+
+.task-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: 0 10px 24px rgba(21, 34, 50, 0.11);
 }
 
 .task-card.done {
@@ -405,6 +442,9 @@
   min-width: 66px;
   justify-content: center;
   border-radius: 6px;
+  transition:
+    filter 160ms ease,
+    transform 160ms var(--ease-out);
 }
 
 .status-badge.status-new {
@@ -534,11 +574,16 @@ td {
 
 tbody tr {
   cursor: pointer;
-  transition: background 140ms ease;
+  transition:
+    background 140ms ease,
+    box-shadow 160ms ease,
+    transform 120ms ease;
 }
 
 tbody tr:hover {
   background: #fbfcfd;
+  box-shadow: inset 0 0 0 9999px rgba(35, 116, 95, 0.025);
+  transform: translateX(1px);
 }
 
 .task-row {
@@ -588,6 +633,7 @@ tbody tr:hover {
   font: inherit;
   text-align: left;
   text-transform: inherit;
+  transition: color 140ms ease;
 }
 
 .sort-button span:first-child {
@@ -603,6 +649,16 @@ tbody tr:hover {
 
 .sort-button.active {
   color: var(--primary-strong);
+}
+
+.sort-button:hover {
+  color: var(--primary-strong);
+}
+
+tbody tr:hover .status-badge,
+.task-card:hover .badge {
+  filter: saturate(1.08);
+  transform: translateY(-1px);
 }
 
 .table-actions {
@@ -707,6 +763,7 @@ td .icon-button {
   place-items: center;
   padding: 20px;
   background: rgba(15, 23, 42, 0.36);
+  animation: backdrop-in 160ms ease-out;
 }
 
 .modal {
@@ -715,6 +772,7 @@ td .icon-button {
   overflow: auto;
   padding: 20px;
   box-shadow: var(--shadow-md);
+  animation: sheet-in 190ms var(--ease-out);
 }
 
 .modal h2 {
@@ -740,6 +798,7 @@ td .icon-button {
   border: 1px solid #efd087;
   border-radius: var(--radius-md);
   background: var(--warning-soft);
+  animation: notice-in 180ms var(--ease-out);
 }
 
 .error {
@@ -759,6 +818,37 @@ td .icon-button {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
