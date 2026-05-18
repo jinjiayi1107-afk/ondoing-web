@@ -155,6 +155,8 @@ function Dashboard({ session }: { session: Session }) {
   const [progressTask, setProgressTask] = useState<Task | null>(null)
   const [detailTask, setDetailTask] = useState<Task | null>(null)
   const clickTimer = useRef<number | null>(null)
+  const [taskStatusFilter, setTaskStatusFilter] = useState<'all' | 'incomplete'>('all')
+  const [paymentCurrencyFilter, setPaymentCurrencyFilter] = useState<string | null>(null)
   const [taskSort, setTaskSort] = useState<{ key: TaskSortKey; direction: SortDirection }>({
     key: 'status',
     direction: 'asc',
@@ -185,27 +187,33 @@ function Dashboard({ session }: { session: Session }) {
 
   const filteredTasks = useMemo(() => {
     const q = query.trim().toLowerCase()
+    const baseRows = taskStatusFilter === 'incomplete'
+      ? tasks.filter((task) => task.status !== '已完成')
+      : tasks
     const rows = !q
-      ? tasks
-      : tasks.filter((task) =>
+      ? baseRows
+      : baseRows.filter((task) =>
       [task.project, task.latest, task.history, task.owner, task.status, task.id].some((value) =>
         String(value || '').toLowerCase().includes(q),
       ),
     )
     return [...rows].sort((a, b) => compareTasks(a, b, taskSort.key, taskSort.direction))
-  }, [query, taskSort, tasks])
+  }, [query, taskSort, taskStatusFilter, tasks])
 
   const filteredPayments = useMemo(() => {
     const q = query.trim().toLowerCase()
+    const baseRows = paymentCurrencyFilter
+      ? payments.filter((payment) => payment.currency === paymentCurrencyFilter)
+      : payments
     const rows = !q
-      ? payments
-      : payments.filter((payment) =>
+      ? baseRows
+      : baseRows.filter((payment) =>
       [payment.item, payment.currency, payment.note, payment.payment_date].some((value) =>
         String(value || '').toLowerCase().includes(q),
       ),
     )
     return [...rows].sort((a, b) => comparePayments(a, b, paymentSort.key, paymentSort.direction))
-  }, [paymentSort, query, payments])
+  }, [paymentCurrencyFilter, paymentSort, query, payments])
 
   const paymentTotals = useMemo(() => {
     const totals = new Map<string, number>()
@@ -348,6 +356,27 @@ function Dashboard({ session }: { session: Session }) {
     }))
   }
 
+  function showAllTasks() {
+    setView('list')
+    setTaskStatusFilter('all')
+    setPaymentCurrencyFilter(null)
+    setQuery('')
+  }
+
+  function showIncompleteTasks() {
+    setView('list')
+    setTaskStatusFilter('incomplete')
+    setPaymentCurrencyFilter(null)
+    setQuery('')
+  }
+
+  function showPayments(currency?: string) {
+    setView('payments')
+    setPaymentCurrencyFilter(currency || null)
+    setTaskStatusFilter('all')
+    setQuery('')
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -376,34 +405,34 @@ function Dashboard({ session }: { session: Session }) {
               <Columns3 size={17} />
               看板
             </button>
-            <button className={`nav-button ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}>
+            <button className={`nav-button ${view === 'list' ? 'active' : ''}`} onClick={showAllTasks}>
               <LayoutList size={17} />
               列表
             </button>
-            <button className={`nav-button ${view === 'payments' ? 'active' : ''}`} onClick={() => setView('payments')}>
+            <button className={`nav-button ${view === 'payments' ? 'active' : ''}`} onClick={() => showPayments()}>
               <WalletCards size={17} />
               支付
             </button>
           </nav>
 
           <div className="summary-stack" style={{ marginTop: 18 }}>
-            <div className="summary-card">
+            <button className="summary-card summary-button" type="button" onClick={showAllTasks}>
               <strong>{tasks.length}</strong>
               <span>全部任务</span>
-            </div>
-            <div className="summary-card">
+            </button>
+            <button className="summary-card summary-button" type="button" onClick={showIncompleteTasks}>
               <strong>{tasks.filter((task) => task.status !== '已完成').length}</strong>
               <span>未完成</span>
-            </div>
-            <div className="summary-card">
+            </button>
+            <button className="summary-card summary-button" type="button" onClick={() => showPayments()}>
               <strong>{payments.length}</strong>
               <span>支付记录</span>
-            </div>
+            </button>
             {paymentTotals.map(([currency, total]) => (
-              <div className="summary-card" key={currency}>
+              <button className="summary-card summary-button" type="button" key={currency} onClick={() => showPayments(currency)}>
                 <strong>{total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong>
                 <span>{currency} 合计</span>
-              </div>
+              </button>
             ))}
           </div>
         </aside>

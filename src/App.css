@@ -242,16 +242,28 @@
 .summary-card {
   min-width: 0;
   padding: 8px 9px;
+  text-align: left;
   transition:
     border-color 160ms ease,
     transform 160ms var(--ease-out),
     box-shadow 160ms ease;
 }
 
-.summary-card:hover {
+.summary-button {
+  width: 100%;
+  cursor: pointer;
+}
+
+.summary-card:hover,
+.summary-button:focus-visible {
   border-color: var(--border-strong);
   transform: translateX(2px);
   box-shadow: 0 6px 18px rgba(21, 34, 50, 0.08);
+}
+
+.summary-button:focus-visible {
+  outline: 3px solid rgba(44, 123, 229, 0.24);
+  outline-offset: 2px;
 }
 
 .summary-card strong {
@@ -483,12 +495,12 @@ table {
   border-collapse: collapse;
   table-layout: fixed;
   background: var(--surface);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 th,
 td {
-  padding: 7px 8px;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: middle;
@@ -504,37 +516,48 @@ th {
 
 .task-table th:nth-child(1),
 .task-table td:nth-child(1) {
-  width: 9%;
+  width: 96px;
 }
 
 .task-table th:nth-child(2),
 .task-table td:nth-child(2) {
-  width: 27%;
+  width: 28%;
 }
 
 .task-table th:nth-child(3),
 .task-table td:nth-child(3) {
-  width: 8%;
+  width: 76px;
 }
 
 .task-table th:nth-child(4),
 .task-table td:nth-child(4) {
-  width: 25%;
+  width: auto;
 }
 
 .task-table th:nth-child(5),
 .task-table td:nth-child(5) {
-  width: 8%;
+  width: 72px;
 }
 
 .task-table th:nth-child(6),
 .task-table td:nth-child(6) {
-  width: 9%;
+  width: 90px;
 }
 
 .task-table th:nth-child(7),
 .task-table td:nth-child(7) {
-  width: 14%;
+  width: 124px;
+}
+
+.task-table th:nth-child(1),
+.task-table td:nth-child(1),
+.task-table th:nth-child(6),
+.task-table td:nth-child(6),
+.payment-table th:nth-child(1),
+.payment-table td:nth-child(1) {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 .payment-table th:nth-child(1),
@@ -616,7 +639,7 @@ tbody tr:hover {
 
 .latest-cell {
   color: #3b4658;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .sort-button {
@@ -667,8 +690,8 @@ tbody tr:hover .status-badge,
 }
 
 td .icon-button {
-  width: 32px;
-  min-height: 32px;
+  width: 30px;
+  min-height: 30px;
 }
 
 .compact-modal {
