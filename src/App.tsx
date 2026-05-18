@@ -458,11 +458,10 @@ function Dashboard({ session }: { session: Session }) {
                 {view === 'payments' ? '支付记录' : view === 'list' ? '任务列表' : view === 'calendar' ? '任务日历' : '任务看板'}
               </h2>
               <div className="toolbar">
-                <div style={{ position: 'relative', minWidth: 220 }}>
-                  <Search size={16} style={{ position: 'absolute', left: 10, top: 11, color: '#77706a' }} />
+                <div className="search-control">
+                  <Search size={16} />
                   <input
                     className="search-input"
-                    style={{ paddingLeft: 34 }}
                     placeholder="搜索"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
