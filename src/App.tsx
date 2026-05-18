@@ -713,6 +713,12 @@ function TaskCalendar({
       </div>
       <div className="calendar-wrap" ref={bodyScrollRef} onScroll={() => syncScroll('body')} onWheel={handleCalendarWheel}>
       <div className="calendar-grid" style={{ '--days': days.length } as CSSProperties}>
+        <div className="calendar-stats-spacer" aria-hidden="true" />
+        <div className="calendar-month-stats" aria-label="当月任务统计">
+          <span><strong>{monthStats.completed}</strong> 当月完成</span>
+          <span><strong>{monthStats.started}</strong> 当月开始</span>
+          <span><strong>{monthStats.doing}</strong> 当月进行中</span>
+        </div>
         <div className="calendar-corner">任务</div>
         <div className="calendar-days calendar-head-days">
           {days.map((day) => (
@@ -752,11 +758,6 @@ function TaskCalendar({
           )
         })}
       </div>
-      </div>
-      <div className="calendar-month-stats" aria-label="当月任务统计">
-        <span><strong>{monthStats.completed}</strong> 当月完成</span>
-        <span><strong>{monthStats.started}</strong> 当月开始</span>
-        <span><strong>{monthStats.doing}</strong> 当月进行中</span>
       </div>
     </div>
   )
