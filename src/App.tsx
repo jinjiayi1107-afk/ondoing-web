@@ -4,6 +4,8 @@ import {
   ClipboardList,
   Columns3,
   Edit3,
+  Eye,
+  EyeOff,
   FileJson,
   LayoutList,
   LogOut,
@@ -55,6 +57,7 @@ function App() {
 function Login() {
   const [email, setEmail] = useState(allowedEmail)
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -98,15 +101,25 @@ function Login() {
           </label>
           <label>
             密码
-            <input
-              className="field"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') void signIn()
-              }}
-            />
+            <span className="password-field">
+              <input
+                className="field"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') void signIn()
+                }}
+              />
+              <button
+                className="password-toggle"
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                aria-label={showPassword ? '隐藏密码' : '显示密码'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </span>
           </label>
           <button className="primary-button" type="button" onClick={signIn} disabled={busy}>
             {busy ? '登录中...' : '登录'}
@@ -114,7 +127,9 @@ function Login() {
           <button className="ghost-button" type="button" onClick={signUp} disabled={busy || password.length < 6}>
             首次使用：创建账号
           </button>
-          {message && <p className={message.includes('已创建') ? 'muted' : 'error'}>{message}</p>}
+          {message && (
+            <p className={message.includes('已创建') ? 'muted feedback' : 'error feedback'}>{message}</p>
+          )}
         </div>
       </section>
     </main>
@@ -284,7 +299,7 @@ function Dashboard({ session }: { session: Session }) {
           <span className="user-email">{session.user.email}</span>
           <button className="ghost-button" type="button" onClick={() => supabase.auth.signOut()} title="退出登录">
             <LogOut size={16} />
-            退出
+            <span>退出</span>
           </button>
         </div>
       </header>
@@ -484,13 +499,13 @@ function TaskCard({
         <span>{daysSince(task.updated_at || task.created_date)} 天未更新</span>
       </div>
       <div className="table-actions" style={{ marginTop: 10 }}>
-        <button className="icon-button" title="编辑" onClick={() => onEdit(task)}>
+        <button className="icon-button" title="编辑" aria-label="编辑任务" onClick={() => onEdit(task)}>
           <Edit3 size={15} />
         </button>
-        <button className="icon-button" title="完成" onClick={() => onDone(task)}>
+        <button className="icon-button" title="完成" aria-label="标记完成" onClick={() => onDone(task)}>
           <CheckCircle2 size={15} />
         </button>
-        <button className="icon-button" title="删除" onClick={() => onDelete(task)}>
+        <button className="icon-button" title="删除" aria-label="删除任务" onClick={() => onDelete(task)}>
           <Trash2 size={15} />
         </button>
       </div>
@@ -521,17 +536,17 @@ function TaskTable(props: {
         <tbody>
           {props.tasks.map((task) => (
             <tr key={task.id}>
-              <td>{task.id}</td>
-              <td>{task.project}</td>
-              <td><span className="badge">{task.status}</span></td>
-              <td>{task.latest}</td>
-              <td>{task.owner}</td>
-              <td>{task.updated_at?.slice(0, 10) || task.created_date}</td>
-              <td>
+              <td data-label="ID">{task.id}</td>
+              <td data-label="项目">{task.project}</td>
+              <td data-label="状态"><span className="badge">{task.status}</span></td>
+              <td data-label="最新进展">{task.latest}</td>
+              <td data-label="负责人">{task.owner}</td>
+              <td data-label="更新">{task.updated_at?.slice(0, 10) || task.created_date}</td>
+              <td data-label="操作">
                 <div className="table-actions">
-                  <button className="icon-button" title="编辑" onClick={() => props.onEdit(task)}><Edit3 size={15} /></button>
-                  <button className="icon-button" title="完成" onClick={() => props.onDone(task)}><CheckCircle2 size={15} /></button>
-                  <button className="icon-button" title="删除" onClick={() => props.onDelete(task)}><Trash2 size={15} /></button>
+                  <button className="icon-button" title="编辑" aria-label="编辑任务" onClick={() => props.onEdit(task)}><Edit3 size={15} /></button>
+                  <button className="icon-button" title="完成" aria-label="标记完成" onClick={() => props.onDone(task)}><CheckCircle2 size={15} /></button>
+                  <button className="icon-button" title="删除" aria-label="删除任务" onClick={() => props.onDelete(task)}><Trash2 size={15} /></button>
                 </div>
               </td>
             </tr>
@@ -563,15 +578,15 @@ function PaymentTable(props: {
         <tbody>
           {props.payments.map((payment) => (
             <tr key={payment.id}>
-              <td>{payment.payment_date}</td>
-              <td>{payment.item}</td>
-              <td>{payment.amount?.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-              <td><span className="badge">{payment.currency}</span></td>
-              <td>{payment.note}</td>
-              <td>
+              <td data-label="日期">{payment.payment_date}</td>
+              <td data-label="款项">{payment.item}</td>
+              <td data-label="金额">{payment.amount?.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+              <td data-label="币种"><span className="badge">{payment.currency}</span></td>
+              <td data-label="备注">{payment.note}</td>
+              <td data-label="操作">
                 <div className="table-actions">
-                  <button className="icon-button" title="编辑" onClick={() => props.onEdit(payment)}><Edit3 size={15} /></button>
-                  <button className="icon-button" title="删除" onClick={() => props.onDelete(payment)}><Trash2 size={15} /></button>
+                  <button className="icon-button" title="编辑" aria-label="编辑支付记录" onClick={() => props.onEdit(payment)}><Edit3 size={15} /></button>
+                  <button className="icon-button" title="删除" aria-label="删除支付记录" onClick={() => props.onDelete(payment)}><Trash2 size={15} /></button>
                 </div>
               </td>
             </tr>
