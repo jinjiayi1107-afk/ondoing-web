@@ -33,6 +33,11 @@ import './App.css'
 
 const allowedEmail = '13127843093@163.com'
 const currencies = ['USD', 'EUR', 'GBP', 'CNY', 'JPY', 'KRW', 'HKD', 'TWD', 'AUD', 'CAD', 'SGD', 'CHF']
+const statusRank = new Map(STATUSES.map((status, index) => [status, index]))
+
+type TaskSortKey = 'id' | 'project' | 'status' | 'latest' | 'owner' | 'updated_at'
+type PaymentSortKey = 'payment_date' | 'item' | 'amount' | 'currency' | 'note'
+type SortDirection = 'asc' | 'desc'
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -147,6 +152,14 @@ function Dashboard({ session }: { session: Session }) {
   const [taskDraft, setTaskDraft] = useState<TaskDraft | null>(null)
   const [taskOriginalLatest, setTaskOriginalLatest] = useState('')
   const [paymentDraft, setPaymentDraft] = useState<PaymentDraft | null>(null)
+  const [taskSort, setTaskSort] = useState<{ key: TaskSortKey; direction: SortDirection }>({
+    key: 'status',
+    direction: 'asc',
+  })
+  const [paymentSort, setPaymentSort] = useState<{ key: PaymentSortKey; direction: SortDirection }>({
+    key: 'payment_date',
+    direction: 'desc',
+  })
 
   useEffect(() => {
     void loadAll()
@@ -169,23 +182,27 @@ function Dashboard({ session }: { session: Session }) {
 
   const filteredTasks = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return tasks
-    return tasks.filter((task) =>
+    const rows = !q
+      ? tasks
+      : tasks.filter((task) =>
       [task.project, task.latest, task.history, task.owner, task.status, task.id].some((value) =>
         String(value || '').toLowerCase().includes(q),
       ),
     )
-  }, [query, tasks])
+    return [...rows].sort((a, b) => compareTasks(a, b, taskSort.key, taskSort.direction))
+  }, [query, taskSort, tasks])
 
   const filteredPayments = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return payments
-    return payments.filter((payment) =>
+    const rows = !q
+      ? payments
+      : payments.filter((payment) =>
       [payment.item, payment.currency, payment.note, payment.payment_date].some((value) =>
         String(value || '').toLowerCase().includes(q),
       ),
     )
-  }, [query, payments])
+    return [...rows].sort((a, b) => comparePayments(a, b, paymentSort.key, paymentSort.direction))
+  }, [paymentSort, query, payments])
 
   const paymentTotals = useMemo(() => {
     const totals = new Map<string, number>()
@@ -281,6 +298,20 @@ function Dashboard({ session }: { session: Session }) {
       setNotice(`已导入 ${rows.length} 条支付记录。`)
     }
     await loadAll()
+  }
+
+  function toggleTaskSort(key: TaskSortKey) {
+    setTaskSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }))
+  }
+
+  function togglePaymentSort(key: PaymentSortKey) {
+    setPaymentSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }))
   }
 
   return (
@@ -381,9 +412,22 @@ function Dashboard({ session }: { session: Session }) {
               ) : view === 'kanban' ? (
                 <Kanban tasks={filteredTasks} onEdit={openEditTask} onDone={quickDone} onDelete={deleteTask} />
               ) : view === 'list' ? (
-                <TaskTable tasks={filteredTasks} onEdit={openEditTask} onDone={quickDone} onDelete={deleteTask} />
+                <TaskTable
+                  tasks={filteredTasks}
+                  sort={taskSort}
+                  onSort={toggleTaskSort}
+                  onEdit={openEditTask}
+                  onDone={quickDone}
+                  onDelete={deleteTask}
+                />
               ) : (
-                <PaymentTable payments={filteredPayments} onEdit={openEditPayment} onDelete={deletePayment} />
+                <PaymentTable
+                  payments={filteredPayments}
+                  sort={paymentSort}
+                  onSort={togglePaymentSort}
+                  onEdit={openEditPayment}
+                  onDelete={deletePayment}
+                />
               )}
             </div>
           </section>
@@ -407,6 +451,47 @@ function Dashboard({ session }: { session: Session }) {
         />
       )}
     </div>
+  )
+}
+
+function compareTasks(a: Task, b: Task, key: TaskSortKey, direction: SortDirection) {
+  let result =
+    key === 'status'
+      ? (statusRank.get(a.status) ?? 99) - (statusRank.get(b.status) ?? 99)
+      : compareValues(a[key] || '', b[key] || '')
+  if (result === 0 && key !== 'updated_at') {
+    result = compareValues(b.updated_at || b.created_date, a.updated_at || a.created_date)
+  }
+  return direction === 'asc' ? result : -result
+}
+
+function comparePayments(a: Payment, b: Payment, key: PaymentSortKey, direction: SortDirection) {
+  const result = compareValues(a[key] ?? '', b[key] ?? '')
+  return direction === 'asc' ? result : -result
+}
+
+function compareValues(a: string | number, b: string | number) {
+  if (typeof a === 'number' || typeof b === 'number') return Number(a || 0) - Number(b || 0)
+  return String(a || '').localeCompare(String(b || ''), 'zh-Hans-CN', { numeric: true, sensitivity: 'base' })
+}
+
+function SortButton<K extends string>({
+  label,
+  column,
+  sort,
+  onSort,
+}: {
+  label: string
+  column: K
+  sort: { key: K; direction: SortDirection }
+  onSort: (key: K) => void
+}) {
+  const active = sort.key === column
+  return (
+    <button className={`sort-button ${active ? 'active' : ''}`} type="button" onClick={() => onSort(column)}>
+      <span>{label}</span>
+      <span aria-hidden="true">{active ? (sort.direction === 'asc' ? '↑' : '↓') : '↕'}</span>
+    </button>
   )
 }
 
@@ -515,6 +600,8 @@ function TaskCard({
 
 function TaskTable(props: {
   tasks: Task[]
+  sort: { key: TaskSortKey; direction: SortDirection }
+  onSort: (key: TaskSortKey) => void
   onEdit: (task: Task) => void
   onDone: (task: Task) => void
   onDelete: (task: Task) => void
@@ -524,22 +611,22 @@ function TaskTable(props: {
       <table>
         <thead>
           <tr>
-            <th>ID</th>
-            <th>项目</th>
-            <th>状态</th>
-            <th>最新进展</th>
-            <th>负责人</th>
-            <th>更新</th>
+            <th><SortButton label="ID" column="id" sort={props.sort} onSort={props.onSort} /></th>
+            <th><SortButton label="项目" column="project" sort={props.sort} onSort={props.onSort} /></th>
+            <th><SortButton label="状态" column="status" sort={props.sort} onSort={props.onSort} /></th>
+            <th><SortButton label="最新进展" column="latest" sort={props.sort} onSort={props.onSort} /></th>
+            <th><SortButton label="负责人" column="owner" sort={props.sort} onSort={props.onSort} /></th>
+            <th><SortButton label="更新" column="updated_at" sort={props.sort} onSort={props.onSort} /></th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
           {props.tasks.map((task) => (
-            <tr key={task.id}>
+            <tr className={`task-row ${statusClass(task.status)}`} key={task.id}>
               <td data-label="ID">{task.id}</td>
               <td data-label="项目">{task.project}</td>
-              <td data-label="状态"><span className="badge">{task.status}</span></td>
-              <td data-label="最新进展">{task.latest}</td>
+              <td data-label="状态"><span className={`status-badge ${statusClass(task.status)}`}>{task.status}</span></td>
+              <td data-label="最新进展" className="latest-cell">{task.latest}</td>
               <td data-label="负责人">{task.owner}</td>
               <td data-label="更新">{task.updated_at?.slice(0, 10) || task.created_date}</td>
               <td data-label="操作">
@@ -559,6 +646,8 @@ function TaskTable(props: {
 
 function PaymentTable(props: {
   payments: Payment[]
+  sort: { key: PaymentSortKey; direction: SortDirection }
+  onSort: (key: PaymentSortKey) => void
   onEdit: (payment: Payment) => void
   onDelete: (payment: Payment) => void
 }) {
@@ -567,11 +656,11 @@ function PaymentTable(props: {
       <table>
         <thead>
           <tr>
-            <th>日期</th>
-            <th>款项</th>
-            <th>金额</th>
-            <th>币种</th>
-            <th>备注</th>
+            <th><SortButton label="日期" column="payment_date" sort={props.sort} onSort={props.onSort} /></th>
+            <th><SortButton label="款项" column="item" sort={props.sort} onSort={props.onSort} /></th>
+            <th><SortButton label="金额" column="amount" sort={props.sort} onSort={props.onSort} /></th>
+            <th><SortButton label="币种" column="currency" sort={props.sort} onSort={props.onSort} /></th>
+            <th><SortButton label="备注" column="note" sort={props.sort} onSort={props.onSort} /></th>
             <th>操作</th>
           </tr>
         </thead>
@@ -595,6 +684,13 @@ function PaymentTable(props: {
       </table>
     </div>
   )
+}
+
+function statusClass(status: Task['status']) {
+  if (status === '已完成') return 'status-done'
+  if (status === '进行中') return 'status-doing'
+  if (status === '搁置') return 'status-paused'
+  return 'status-new'
 }
 
 function TaskModal({

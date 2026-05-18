@@ -106,7 +106,7 @@
 
 .main {
   min-width: 0;
-  padding: 22px;
+  padding: 16px;
 }
 
 .nav-stack,
@@ -245,7 +245,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
@@ -306,7 +306,7 @@
 }
 
 .content-area {
-  padding: 16px;
+  padding: 12px 14px 14px;
 }
 
 .kanban-board {
@@ -369,7 +369,8 @@
   font-size: 12px;
 }
 
-.badge {
+.badge,
+.status-badge {
   display: inline-flex;
   align-items: center;
   min-height: 26px;
@@ -380,24 +381,59 @@
   background: var(--primary-soft);
   font-size: 12px;
   font-weight: 650;
+  white-space: nowrap;
+}
+
+.status-badge {
+  min-width: 66px;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.status-new {
+  color: #185a8d;
+  border-color: #b8d8ef;
+  background: #e8f4ff;
+}
+
+.status-doing {
+  color: #155c4b;
+  border-color: #b7ded2;
+  background: #dff2ec;
+}
+
+.status-paused {
+  color: #596273;
+  border-color: #d2d8e1;
+  background: #eef2f6;
+}
+
+.status-done {
+  color: #8f2f28;
+  border-color: #efc2bd;
+  background: #fff0ee;
 }
 
 .table-wrap {
   overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
 }
 
 table {
   width: 100%;
-  min-width: 780px;
+  min-width: 960px;
   border-collapse: collapse;
+  table-layout: fixed;
+  background: var(--surface);
 }
 
 th,
 td {
-  padding: 12px;
+  padding: 9px 10px;
   border-bottom: 1px solid var(--border);
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 th {
@@ -408,8 +444,118 @@ th {
   background: var(--surface-muted);
 }
 
+th:nth-child(1),
+td:nth-child(1) {
+  width: 122px;
+}
+
+th:nth-child(2),
+td:nth-child(2) {
+  width: 30%;
+}
+
+th:nth-child(3),
+td:nth-child(3) {
+  width: 88px;
+}
+
+th:nth-child(4),
+td:nth-child(4) {
+  width: 18%;
+}
+
+th:nth-child(5),
+td:nth-child(5) {
+  width: 100px;
+}
+
+th:nth-child(6),
+td:nth-child(6) {
+  width: 108px;
+}
+
+th:nth-child(7),
+td:nth-child(7) {
+  width: 154px;
+}
+
 td {
-  line-height: 1.45;
+  line-height: 1.38;
+  overflow-wrap: anywhere;
+}
+
+tbody tr {
+  transition: background 140ms ease;
+}
+
+tbody tr:hover {
+  background: #fbfcfd;
+}
+
+.task-row {
+  border-left: 4px solid transparent;
+}
+
+.task-row.status-new {
+  border-left-color: #4b9bd8;
+}
+
+.task-row.status-doing {
+  border-left-color: var(--primary);
+}
+
+.task-row.status-paused {
+  border-left-color: #8a94a3;
+}
+
+.task-row.status-done {
+  border-left-color: #c15b52;
+}
+
+.latest-cell {
+  color: #3b4658;
+  font-size: 14px;
+}
+
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-height: 30px;
+  padding: 0;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  text-transform: inherit;
+}
+
+.sort-button span:first-child {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sort-button span:last-child {
+  color: var(--subtle);
+  font-size: 12px;
+}
+
+.sort-button.active {
+  color: var(--primary-strong);
+}
+
+.table-actions {
+  gap: 6px;
+  justify-content: flex-start;
+}
+
+td .icon-button {
+  width: 36px;
+  min-height: 36px;
 }
 
 .login-wrap {
@@ -668,6 +814,11 @@ td {
 
   table {
     min-width: 0;
+  }
+
+  th,
+  td {
+    width: auto !important;
   }
 
   thead {
