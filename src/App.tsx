@@ -638,9 +638,11 @@ function TaskCalendar({
   onOpenTask: (task: Task) => void
 }) {
   const [visibleMonth, setVisibleMonth] = useState(() => monthStart(new Date()))
-  const now = useMemo(() => new Date(), [])
-  const todayDate = useMemo(() => new Date(now.getFullYear(), now.getMonth(), now.getDate()), [now])
+  const topScrollRef = useRef<HTMLDivElement | null>(null)
+  const bodyScrollRef = useRef<HTMLDivElement | null>(null)
   const items = useMemo(() => {
+    const now = new Date()
+    const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     return tasks
       .map((task) => {
         const start = parseDateOnly(task.created_date) || todayDate
@@ -649,31 +651,42 @@ function TaskCalendar({
         return { task, start, end: end < start ? start : end }
       })
       .sort((a, b) => a.start.getTime() - b.start.getTime())
-  }, [tasks, todayDate])
+  }, [tasks])
 
-  const weeks = useMemo(() => {
-    const start = weekStart(monthStart(visibleMonth))
-    const end = weekEnd(monthEnd(visibleMonth))
-    const rows: Date[][] = []
-    let week: Date[] = []
-    for (let cursor = start; cursor <= end; cursor = addDays(cursor, 1)) {
-      week.push(cursor)
-      if (week.length === 7) {
-        rows.push(week)
-        week = []
-      }
-    }
+  const days = useMemo(() => {
+    const rows: Date[] = []
+    const max = monthEnd(visibleMonth)
+    for (let cursor = monthStart(visibleMonth); cursor <= max; cursor = addDays(cursor, 1)) rows.push(cursor)
     return rows
   }, [visibleMonth])
 
-  const monthStartDate = monthStart(visibleMonth)
-  const monthEndDate = monthEnd(visibleMonth)
+  const monthStartDate = days[0]
+  const monthEndDate = days[days.length - 1]
   const visibleItems = useMemo(
     () => items.filter((item) => item.start <= monthEndDate && item.end >= monthStartDate),
     [items, monthEndDate, monthStartDate],
   )
 
   if (!items.length) return <p className="muted">暂无任务可展示。</p>
+
+  function syncScroll(source: 'top' | 'body') {
+    const top = topScrollRef.current
+    const body = bodyScrollRef.current
+    if (!top || !body) return
+    if (source === 'top') body.scrollLeft = top.scrollLeft
+    else top.scrollLeft = body.scrollLeft
+  }
+
+  function handleCalendarWheel(event: React.WheelEvent<HTMLDivElement>) {
+    const body = bodyScrollRef.current
+    const top = topScrollRef.current
+    if (!body) return
+    const horizontalDelta = event.deltaX || (event.shiftKey ? event.deltaY : 0)
+    if (!horizontalDelta) return
+    body.scrollLeft += horizontalDelta
+    if (top) top.scrollLeft = body.scrollLeft
+    event.preventDefault()
+  }
 
   return (
     <div className="calendar-shell">
@@ -686,44 +699,37 @@ function TaskCalendar({
           下个月
         </button>
       </div>
-      <div className="month-calendar">
-        <div className="month-weekdays">
-          {['日', '一', '二', '三', '四', '五', '六'].map((label) => <span key={label}>{label}</span>)}
+      <div className="calendar-top-scroll" ref={topScrollRef} onScroll={() => syncScroll('top')} aria-hidden="true">
+        <div style={{ width: `calc(148px + ${days.length} * 18px)` }} />
+      </div>
+      <div className="calendar-wrap" ref={bodyScrollRef} onScroll={() => syncScroll('body')} onWheel={handleCalendarWheel}>
+      <div className="calendar-grid" style={{ '--days': days.length } as CSSProperties}>
+        <div className="calendar-corner">任务</div>
+        <div className="calendar-days calendar-head-days">
+          {days.map((day) => (
+            <div className={`calendar-day-label ${day.getDate() === 1 ? 'month-start' : ''}`} key={dateKey(day)}>
+              <span>{day.getDate()}</span>
+            </div>
+          ))}
         </div>
-        {weeks.map((week) => {
-          const weekStartDate = week[0]
-          const weekEndDate = week[6]
-          const segments = visibleItems
-            .filter((item) => item.start <= weekEndDate && item.end >= weekStartDate)
-            .map((item) => {
-              const clampedStart = item.start < weekStartDate ? weekStartDate : item.start
-              const clampedEnd = item.end > weekEndDate ? weekEndDate : item.end
-              return {
-                ...item,
-                startColumn: daysBetween(weekStartDate, clampedStart) + 1,
-                endColumn: daysBetween(weekStartDate, clampedEnd) + 2,
-              }
-            })
+
+        {visibleItems.map(({ task, start, end }) => {
+          const clampedStart = start < monthStartDate ? monthStartDate : start
+          const clampedEnd = end > monthEndDate ? monthEndDate : end
+          const startIndex = Math.max(0, daysBetween(monthStartDate, clampedStart))
+          const endIndex = Math.min(days.length - 1, daysBetween(monthStartDate, clampedEnd))
           return (
-            <div className="month-week" key={dateKey(weekStartDate)} style={{ '--lines': Math.max(segments.length, 1) } as CSSProperties}>
-              <div className="month-day-grid">
-                {week.map((day) => {
-                  const inMonth = day.getMonth() === visibleMonth.getMonth()
-                  const isToday = dateKey(day) === dateKey(todayDate)
-                  return (
-                    <div className={`month-day ${inMonth ? '' : 'outside'} ${isToday ? 'today' : ''}`} key={dateKey(day)}>
-                      <strong>{day.getDate()}</strong>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="month-line-grid">
-                {segments.map(({ task, start, end, startColumn, endColumn }, index) => (
+            <div className="calendar-entry" key={task.id}>
+              <button className="calendar-task-name" type="button" onDoubleClick={() => onOpenTask(task)}>
+                <strong>{task.project || task.id}</strong>
+                <span>{formatDate(start)} - {formatDate(end)}</span>
+              </button>
+              <div className="calendar-days calendar-row-days">
+                {days.map((day) => <span className="calendar-cell" key={dateKey(day)} />)}
                 <button
-                  className={`month-task-line ${statusClass(task.status)}`}
+                  className={`calendar-task-line ${statusClass(task.status)}`}
                   type="button"
-                  key={`${task.id}-${index}`}
-                  style={{ gridColumn: `${startColumn} / ${endColumn}`, gridRow: index + 1 }}
+                  style={{ gridColumn: `${startIndex + 1} / ${endIndex + 2}` }}
                   onDoubleClick={() => onOpenTask(task)}
                   aria-label={`打开任务详情：${task.project || task.id}`}
                 >
@@ -732,11 +738,11 @@ function TaskCalendar({
                     <span>{formatDate(start)} - {formatDate(end)}</span>
                   </span>
                 </button>
-                ))}
               </div>
             </div>
           )
         })}
+      </div>
       </div>
     </div>
   )
@@ -755,14 +761,6 @@ function monthStart(date: Date) {
 
 function monthEnd(date: Date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0)
-}
-
-function weekStart(date: Date) {
-  return addDays(date, -date.getDay())
-}
-
-function weekEnd(date: Date) {
-  return addDays(date, 6 - date.getDay())
 }
 
 function addDays(date: Date, amount: number) {
