@@ -637,6 +637,7 @@ function TaskCalendar({
   tasks: Task[]
   onOpenTask: (task: Task) => void
 }) {
+  const [visibleMonth, setVisibleMonth] = useState(() => monthStart(new Date()))
   const items = useMemo(() => {
     const now = new Date()
     const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -651,31 +652,48 @@ function TaskCalendar({
   }, [tasks])
 
   const days = useMemo(() => {
-    if (!items.length) return [] as Date[]
-    const min = monthStart(items[0].start)
-    const max = monthEnd(items.reduce((latest, item) => item.end > latest ? item.end : latest, items[0].end))
     const rows: Date[] = []
-    for (let cursor = min; cursor <= max; cursor = addDays(cursor, 1)) rows.push(cursor)
+    const max = monthEnd(visibleMonth)
+    for (let cursor = monthStart(visibleMonth); cursor <= max; cursor = addDays(cursor, 1)) rows.push(cursor)
     return rows
-  }, [items])
+  }, [visibleMonth])
+
+  const monthStartDate = days[0]
+  const monthEndDate = days[days.length - 1]
+  const visibleItems = useMemo(
+    () => items.filter((item) => item.start <= monthEndDate && item.end >= monthStartDate),
+    [items, monthEndDate, monthStartDate],
+  )
 
   if (!items.length) return <p className="muted">暂无任务可展示。</p>
 
   return (
-    <div className="calendar-wrap">
+    <div className="calendar-shell">
+      <div className="calendar-toolbar">
+        <button className="ghost-button" type="button" onClick={() => setVisibleMonth(addMonths(visibleMonth, -1))}>
+          上个月
+        </button>
+        <strong>{visibleMonth.getFullYear()}年 {visibleMonth.getMonth() + 1}月</strong>
+        <button className="ghost-button" type="button" onClick={() => setVisibleMonth(addMonths(visibleMonth, 1))}>
+          下个月
+        </button>
+      </div>
+      <div className="calendar-wrap">
       <div className="calendar-grid" style={{ '--days': days.length } as CSSProperties}>
         <div className="calendar-corner">任务</div>
         <div className="calendar-days calendar-head-days">
           {days.map((day) => (
             <div className={`calendar-day-label ${day.getDate() === 1 ? 'month-start' : ''}`} key={dateKey(day)}>
-              <span>{day.getDate() === 1 ? `${day.getMonth() + 1}月` : day.getDate()}</span>
+              <span>{day.getDate()}</span>
             </div>
           ))}
         </div>
 
-        {items.map(({ task, start, end }) => {
-          const startIndex = Math.max(0, daysBetween(days[0], start))
-          const endIndex = Math.min(days.length - 1, daysBetween(days[0], end))
+        {visibleItems.map(({ task, start, end }) => {
+          const clampedStart = start < monthStartDate ? monthStartDate : start
+          const clampedEnd = end > monthEndDate ? monthEndDate : end
+          const startIndex = Math.max(0, daysBetween(monthStartDate, clampedStart))
+          const endIndex = Math.min(days.length - 1, daysBetween(monthStartDate, clampedEnd))
           return (
             <div className="calendar-entry" key={task.id}>
               <button className="calendar-task-name" type="button" onDoubleClick={() => onOpenTask(task)}>
@@ -691,7 +709,6 @@ function TaskCalendar({
                   onDoubleClick={() => onOpenTask(task)}
                   aria-label={`打开任务详情：${task.project || task.id}`}
                 >
-                  <span className="calendar-line-text">{task.project || task.id}</span>
                   <span className="calendar-tooltip">
                     <strong>{task.project || task.id}</strong>
                     <span>{formatDate(start)} - {formatDate(end)}</span>
@@ -701,6 +718,7 @@ function TaskCalendar({
             </div>
           )
         })}
+      </div>
       </div>
     </div>
   )
@@ -725,6 +743,10 @@ function addDays(date: Date, amount: number) {
   const next = new Date(date)
   next.setDate(next.getDate() + amount)
   return next
+}
+
+function addMonths(date: Date, amount: number) {
+  return new Date(date.getFullYear(), date.getMonth() + amount, 1)
 }
 
 function daysBetween(start: Date, end: Date) {
