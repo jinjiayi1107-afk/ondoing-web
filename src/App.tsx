@@ -666,6 +666,15 @@ function TaskCalendar({
     () => items.filter((item) => item.start <= monthEndDate && item.end >= monthStartDate),
     [items, monthEndDate, monthStartDate],
   )
+  const monthStats = useMemo(() => {
+    const started = items.filter(({ start }) => isSameMonth(start, visibleMonth)).length
+    const completed = tasks.filter((task) => {
+      const finished = task.status === '已完成' ? parseDateOnly(task.updated_at) : null
+      return finished ? isSameMonth(finished, visibleMonth) : false
+    }).length
+    const doing = visibleItems.filter(({ task }) => task.status === '进行中').length
+    return { completed, started, doing }
+  }, [items, tasks, visibleItems, visibleMonth])
 
   if (!items.length) return <p className="muted">暂无任务可展示。</p>
 
@@ -744,6 +753,11 @@ function TaskCalendar({
         })}
       </div>
       </div>
+      <div className="calendar-month-stats" aria-label="当月任务统计">
+        <span><strong>{monthStats.completed}</strong> 当月完成</span>
+        <span><strong>{monthStats.started}</strong> 当月开始</span>
+        <span><strong>{monthStats.doing}</strong> 当月进行中</span>
+      </div>
     </div>
   )
 }
@@ -761,6 +775,10 @@ function monthStart(date: Date) {
 
 function monthEnd(date: Date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0)
+}
+
+function isSameMonth(date: Date, month: Date) {
+  return date.getFullYear() === month.getFullYear() && date.getMonth() === month.getMonth()
 }
 
 function addDays(date: Date, amount: number) {

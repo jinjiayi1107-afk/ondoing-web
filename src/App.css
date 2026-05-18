@@ -598,6 +598,35 @@
   transform: translate(-50%, 0);
 }
 
+.calendar-month-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calendar-month-stats span {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 10px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.calendar-month-stats strong {
+  color: var(--text);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
 .kanban-board {
   display: grid;
   grid-template-columns: repeat(4, minmax(220px, 1fr));
