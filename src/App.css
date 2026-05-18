@@ -365,6 +365,197 @@
   padding: 12px 14px 14px;
 }
 
+.calendar-wrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: 220px max-content;
+  min-width: max-content;
+  font-size: 12px;
+}
+
+.calendar-corner,
+.calendar-head-days {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.calendar-corner {
+  left: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 10px;
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(var(--days), 30px);
+}
+
+.calendar-day-label,
+.calendar-cell {
+  min-height: 38px;
+  border-left: 1px solid #edf1f5;
+}
+
+.calendar-day-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar-day-label.month-start {
+  color: var(--primary-strong);
+  background: #edf7f4;
+  font-weight: 750;
+}
+
+.calendar-entry {
+  display: contents;
+}
+
+.calendar-task-name {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  min-height: 42px;
+  padding: 6px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+
+.calendar-task-name strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+
+.calendar-task-name span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.calendar-row-days {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+}
+
+.calendar-cell {
+  background: linear-gradient(180deg, #ffffff, #fbfcfd);
+}
+
+.calendar-task-line {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  height: 18px;
+  margin: 0 3px;
+  padding: 0 8px;
+  overflow: visible;
+  color: #ffffff;
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 3px 10px rgba(21, 34, 50, 0.16);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: left;
+  transition:
+    transform 160ms var(--ease-out),
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+.calendar-task-line:hover {
+  transform: translateY(-1px) scaleY(1.08);
+  box-shadow: 0 8px 18px rgba(21, 34, 50, 0.18);
+  filter: saturate(1.08);
+}
+
+.calendar-task-line.status-new {
+  background: #2d8cc7;
+}
+
+.calendar-task-line.status-doing {
+  background: var(--primary);
+}
+
+.calendar-task-line.status-paused {
+  background: #6f7b8d;
+}
+
+.calendar-task-line.status-done {
+  background: #bd5a52;
+}
+
+.calendar-line-text {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.calendar-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 20;
+  display: grid;
+  gap: 4px;
+  width: max-content;
+  max-width: 260px;
+  padding: 10px 12px;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms var(--ease-out);
+}
+
+.calendar-tooltip strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.calendar-tooltip span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.calendar-task-line:hover .calendar-tooltip,
+.calendar-task-line:focus-visible .calendar-tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 .kanban-board {
   display: grid;
   grid-template-columns: repeat(4, minmax(220px, 1fr));
@@ -943,7 +1134,7 @@ td .icon-button {
     left: 12px;
     z-index: 25;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
     padding: 8px;
     border: 1px solid var(--border);

@@ -2,7 +2,7 @@ export const STATUSES = ['待启动', '进行中', '搁置', '已完成'] as con
 
 export type Status = (typeof STATUSES)[number]
 
-export type ViewMode = 'kanban' | 'list' | 'payments'
+export type ViewMode = 'kanban' | 'list' | 'payments' | 'calendar'
 
 export type Task = {
   id: string

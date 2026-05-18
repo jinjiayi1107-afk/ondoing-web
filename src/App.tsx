@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  CalendarDays,
   CheckCircle2,
   ClipboardList,
   Columns3,
@@ -377,6 +378,14 @@ function Dashboard({ session }: { session: Session }) {
     setQuery('')
   }
 
+  function openTaskFromCalendar(task: Task) {
+    setView('list')
+    setTaskStatusFilter('all')
+    setPaymentCurrencyFilter(null)
+    setQuery('')
+    setDetailTask(task)
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -413,6 +422,10 @@ function Dashboard({ session }: { session: Session }) {
               <WalletCards size={17} />
               支付
             </button>
+            <button className={`nav-button ${view === 'calendar' ? 'active' : ''}`} onClick={() => setView('calendar')}>
+              <CalendarDays size={17} />
+              日历
+            </button>
           </nav>
 
           <div className="summary-stack" style={{ marginTop: 18 }}>
@@ -441,7 +454,9 @@ function Dashboard({ session }: { session: Session }) {
           {notice && <div className="notice">{notice}</div>}
           <section className="panel">
             <div className="panel-head">
-              <h2 className="panel-title">{view === 'payments' ? '支付记录' : view === 'list' ? '任务列表' : '任务看板'}</h2>
+              <h2 className="panel-title">
+                {view === 'payments' ? '支付记录' : view === 'list' ? '任务列表' : view === 'calendar' ? '任务日历' : '任务看板'}
+              </h2>
               <div className="toolbar">
                 <div style={{ position: 'relative', minWidth: 220 }}>
                   <Search size={16} style={{ position: 'absolute', left: 10, top: 11, color: '#77706a' }} />
@@ -460,12 +475,12 @@ function Dashboard({ session }: { session: Session }) {
                     <Plus size={16} />
                     新增支付
                   </button>
-                ) : (
+                ) : view !== 'calendar' ? (
                   <button className="primary-button" onClick={openNewTask}>
                     <Plus size={16} />
                     新增任务
                   </button>
-                )}
+                ) : null}
               </div>
             </div>
 
@@ -474,6 +489,8 @@ function Dashboard({ session }: { session: Session }) {
                 <p className="muted">正在读取数据...</p>
               ) : view === 'kanban' ? (
                 <Kanban tasks={filteredTasks} onEdit={openEditTask} onDone={quickDone} onDelete={deleteTask} />
+              ) : view === 'calendar' ? (
+                <TaskCalendar tasks={filteredTasks} onOpenTask={openTaskFromCalendar} />
               ) : view === 'list' ? (
                 <TaskTable
                   tasks={filteredTasks}
@@ -611,6 +628,118 @@ function ImportButton({
       />
     </label>
   )
+}
+
+function TaskCalendar({
+  tasks,
+  onOpenTask,
+}: {
+  tasks: Task[]
+  onOpenTask: (task: Task) => void
+}) {
+  const items = useMemo(() => {
+    const now = new Date()
+    const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    return tasks
+      .map((task) => {
+        const start = parseDateOnly(task.created_date) || todayDate
+        const finished = task.status === '已完成' && task.updated_at ? parseDateOnly(task.updated_at) : null
+        const end = finished || todayDate
+        return { task, start, end: end < start ? start : end }
+      })
+      .sort((a, b) => a.start.getTime() - b.start.getTime())
+  }, [tasks])
+
+  const days = useMemo(() => {
+    if (!items.length) return [] as Date[]
+    const min = monthStart(items[0].start)
+    const max = monthEnd(items.reduce((latest, item) => item.end > latest ? item.end : latest, items[0].end))
+    const rows: Date[] = []
+    for (let cursor = min; cursor <= max; cursor = addDays(cursor, 1)) rows.push(cursor)
+    return rows
+  }, [items])
+
+  if (!items.length) return <p className="muted">暂无任务可展示。</p>
+
+  return (
+    <div className="calendar-wrap">
+      <div className="calendar-grid" style={{ '--days': days.length } as CSSProperties}>
+        <div className="calendar-corner">任务</div>
+        <div className="calendar-days calendar-head-days">
+          {days.map((day) => (
+            <div className={`calendar-day-label ${day.getDate() === 1 ? 'month-start' : ''}`} key={dateKey(day)}>
+              <span>{day.getDate() === 1 ? `${day.getMonth() + 1}月` : day.getDate()}</span>
+            </div>
+          ))}
+        </div>
+
+        {items.map(({ task, start, end }) => {
+          const startIndex = Math.max(0, daysBetween(days[0], start))
+          const endIndex = Math.min(days.length - 1, daysBetween(days[0], end))
+          return (
+            <div className="calendar-entry" key={task.id}>
+              <button className="calendar-task-name" type="button" onDoubleClick={() => onOpenTask(task)}>
+                <strong>{task.project || task.id}</strong>
+                <span>{formatDate(start)} - {formatDate(end)}</span>
+              </button>
+              <div className="calendar-days calendar-row-days">
+                {days.map((day) => <span className="calendar-cell" key={dateKey(day)} />)}
+                <button
+                  className={`calendar-task-line ${statusClass(task.status)}`}
+                  type="button"
+                  style={{ gridColumn: `${startIndex + 1} / ${endIndex + 2}` }}
+                  onDoubleClick={() => onOpenTask(task)}
+                  aria-label={`打开任务详情：${task.project || task.id}`}
+                >
+                  <span className="calendar-line-text">{task.project || task.id}</span>
+                  <span className="calendar-tooltip">
+                    <strong>{task.project || task.id}</strong>
+                    <span>{formatDate(start)} - {formatDate(end)}</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function parseDateOnly(value: string | null | undefined) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function monthStart(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1)
+}
+
+function monthEnd(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0)
+}
+
+function addDays(date: Date, amount: number) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + amount)
+  return next
+}
+
+function daysBetween(start: Date, end: Date) {
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000)
+}
+
+function dateKey(date: Date) {
+  return formatDate(date)
+}
+
+function formatDate(date: Date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 function Kanban({
