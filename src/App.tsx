@@ -1,13 +1,16 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ClipboardList,
   Columns3,
   Edit3,
   Eye,
   EyeOff,
   FileJson,
+  Folder,
+  FolderOpen,
   LayoutList,
   LogOut,
   Plus,
@@ -639,6 +642,10 @@ function TaskCalendar({
   const [visibleMonth, setVisibleMonth] = useState(() => monthStart(new Date()))
   const topScrollRef = useRef<HTMLDivElement | null>(null)
   const bodyScrollRef = useRef<HTMLDivElement | null>(null)
+  const scrollFrame = useRef<number | null>(null)
+  useEffect(() => () => {
+    if (scrollFrame.current !== null) window.cancelAnimationFrame(scrollFrame.current)
+  }, [])
   const items = useMemo(() => {
     const now = new Date()
     const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -681,8 +688,12 @@ function TaskCalendar({
     const top = topScrollRef.current
     const body = bodyScrollRef.current
     if (!top || !body) return
-    if (source === 'top') body.scrollLeft = top.scrollLeft
-    else top.scrollLeft = body.scrollLeft
+    if (scrollFrame.current !== null) window.cancelAnimationFrame(scrollFrame.current)
+    scrollFrame.current = window.requestAnimationFrame(() => {
+      if (source === 'top' && Math.abs(body.scrollLeft - top.scrollLeft) > 1) body.scrollLeft = top.scrollLeft
+      if (source === 'body' && Math.abs(top.scrollLeft - body.scrollLeft) > 1) top.scrollLeft = body.scrollLeft
+      scrollFrame.current = null
+    })
   }
 
   function handleCalendarWheel(event: React.WheelEvent<HTMLDivElement>) {
@@ -692,7 +703,7 @@ function TaskCalendar({
     const horizontalDelta = event.deltaX || (event.shiftKey ? event.deltaY : 0)
     if (!horizontalDelta) return
     body.scrollLeft += horizontalDelta
-    if (top) top.scrollLeft = body.scrollLeft
+    if (top && Math.abs(top.scrollLeft - body.scrollLeft) > 1) top.scrollLeft = body.scrollLeft
     event.preventDefault()
   }
 
@@ -739,7 +750,6 @@ function TaskCalendar({
                 <span>{formatDate(start)} - {formatDate(end)}</span>
               </button>
               <div className="calendar-days calendar-row-days">
-                {days.map((day) => <span className="calendar-cell" key={dateKey(day)} />)}
                 <button
                   className={`calendar-task-line ${statusClass(task.status)}`}
                   type="button"
@@ -883,6 +893,24 @@ function TaskTable(props: {
   onDone: (task: Task) => void
   onDelete: (task: Task) => void
 }) {
+  const [openStatuses, setOpenStatuses] = useState<Set<Task['status']>>(() => new Set())
+  const groupedTasks = useMemo(
+    () => STATUSES.map((status) => ({
+      status,
+      rows: props.tasks.filter((task) => task.status === status),
+    })).filter((group) => group.rows.length > 0),
+    [props.tasks],
+  )
+
+  function toggleStatus(status: Task['status']) {
+    setOpenStatuses((current) => {
+      const next = new Set(current)
+      if (next.has(status)) next.delete(status)
+      else next.add(status)
+      return next
+    })
+  }
+
   return (
     <div className="table-wrap">
       <table className="task-table">
@@ -898,29 +926,54 @@ function TaskTable(props: {
           </tr>
         </thead>
         <tbody>
-          {props.tasks.map((task) => (
-            <tr
-              className={`task-row ${statusClass(task.status)}`}
-              key={task.id}
-              onClick={() => props.onRowClick(task)}
-              onDoubleClick={() => props.onRowDoubleClick(task)}
-              title="单击新增进度，双击查看详情"
-            >
-              <td data-label="ID">{task.id}</td>
-              <td data-label="项目">{task.project}</td>
-              <td data-label="状态"><span className={`status-badge ${statusClass(task.status)}`}>{task.status}</span></td>
-              <td data-label="最新进展" className="latest-cell">{task.latest}</td>
-              <td data-label="负责人">{task.owner}</td>
-              <td data-label="更新">{task.updated_at?.slice(0, 10) || task.created_date}</td>
-              <td data-label="操作">
-                <div className="table-actions" onClick={(event) => event.stopPropagation()}>
-                  <button className="icon-button" title="编辑" aria-label="编辑任务" onClick={() => props.onEdit(task)}><Edit3 size={15} /></button>
-                  <button className="icon-button" title="完成" aria-label="标记完成" onClick={() => props.onDone(task)}><CheckCircle2 size={15} /></button>
-                  <button className="icon-button" title="删除" aria-label="删除任务" onClick={() => props.onDelete(task)}><Trash2 size={15} /></button>
-                </div>
-              </td>
-            </tr>
-          ))}
+          {groupedTasks.map(({ status, rows }) => {
+            const isOpen = openStatuses.has(status)
+            return (
+              <Fragment key={status}>
+                <tr className={`task-folder-row ${statusClass(status)} ${isOpen ? 'open' : ''}`}>
+                  <td colSpan={7}>
+                    <button
+                      className="task-folder-button"
+                      type="button"
+                      onClick={() => toggleStatus(status)}
+                      aria-expanded={isOpen}
+                    >
+                      <span className="task-folder-title">
+                        {isOpen ? <FolderOpen size={16} /> : <Folder size={16} />}
+                        <span>{status}</span>
+                        <span className={`status-badge ${statusClass(status)}`}>{rows.length}</span>
+                      </span>
+                      <ChevronDown className="task-folder-chevron" size={16} />
+                    </button>
+                  </td>
+                </tr>
+                {isOpen && rows.map((task, index) => (
+                  <tr
+                    className={`task-row folder-task-row ${statusClass(task.status)}`}
+                    key={task.id}
+                    style={{ '--row-index': index } as CSSProperties}
+                    onClick={() => props.onRowClick(task)}
+                    onDoubleClick={() => props.onRowDoubleClick(task)}
+                    title="单击新增进度，双击查看详情"
+                  >
+                    <td data-label="ID">{task.id}</td>
+                    <td data-label="项目">{task.project}</td>
+                    <td data-label="状态"><span className={`status-badge ${statusClass(task.status)}`}>{task.status}</span></td>
+                    <td data-label="最新进展" className="latest-cell">{task.latest}</td>
+                    <td data-label="负责人">{task.owner}</td>
+                    <td data-label="更新">{task.updated_at?.slice(0, 10) || task.created_date}</td>
+                    <td data-label="操作">
+                      <div className="table-actions" onClick={(event) => event.stopPropagation()}>
+                        <button className="icon-button" title="编辑" aria-label="编辑任务" onClick={() => props.onEdit(task)}><Edit3 size={15} /></button>
+                        <button className="icon-button" title="完成" aria-label="标记完成" onClick={() => props.onDone(task)}><CheckCircle2 size={15} /></button>
+                        <button className="icon-button" title="删除" aria-label="删除任务" onClick={() => props.onDelete(task)}><Trash2 size={15} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </Fragment>
+            )
+          })}
         </tbody>
       </table>
     </div>
