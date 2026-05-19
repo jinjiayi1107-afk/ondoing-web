@@ -700,7 +700,8 @@ function TaskCalendar({
     const body = bodyScrollRef.current
     const top = topScrollRef.current
     if (!body) return
-    const horizontalDelta = event.deltaX || (event.shiftKey ? event.deltaY : 0)
+    const isHorizontalGesture = Math.abs(event.deltaX) > Math.abs(event.deltaY)
+    const horizontalDelta = isHorizontalGesture ? event.deltaX : event.shiftKey ? event.deltaY : 0
     if (!horizontalDelta) return
     body.scrollLeft += horizontalDelta
     if (top && Math.abs(top.scrollLeft - body.scrollLeft) > 1) top.scrollLeft = body.scrollLeft
@@ -931,7 +932,7 @@ function TaskTable(props: {
             return (
               <Fragment key={status}>
                 <tr className={`task-folder-row ${statusClass(status)} ${isOpen ? 'open' : ''}`}>
-                  <td colSpan={7}>
+                  <td colSpan={2}>
                     <button
                       className="task-folder-button"
                       type="button"
@@ -941,8 +942,18 @@ function TaskTable(props: {
                       <span className="task-folder-title">
                         {isOpen ? <FolderOpen size={16} /> : <Folder size={16} />}
                         <span>{status}</span>
-                        <span className={`status-badge ${statusClass(status)}`}>{rows.length}</span>
                       </span>
+                    </button>
+                  </td>
+                  <td><span className={`status-count-badge ${statusClass(status)}`}>{rows.length}</span></td>
+                  <td colSpan={3} />
+                  <td>
+                    <button
+                      className="task-folder-toggle"
+                      type="button"
+                      onClick={() => toggleStatus(status)}
+                      aria-label={isOpen ? `收起${status}任务` : `展开${status}任务`}
+                    >
                       <ChevronDown className="task-folder-chevron" size={16} />
                     </button>
                   </td>

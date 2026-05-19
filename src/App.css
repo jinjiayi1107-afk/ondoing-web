@@ -953,7 +953,8 @@ tbody tr:hover {
 }
 
 .task-folder-row td {
-  padding: 0;
+  padding: 6px 8px;
+  vertical-align: middle;
 }
 
 .task-folder-row:hover {
@@ -964,10 +965,10 @@ tbody tr:hover {
 .task-folder-button {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   width: 100%;
-  min-height: 38px;
-  padding: 6px 10px;
+  min-height: 34px;
+  padding: 0;
   color: var(--text);
   border: 0;
   background: transparent;
@@ -980,6 +981,40 @@ tbody tr:hover {
   gap: 8px;
   min-width: 0;
   font-weight: 760;
+}
+
+.status-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 70px;
+  min-height: 26px;
+  padding: 2px 14px;
+  border: 1px solid color-mix(in oklch, var(--info) 30%, var(--border));
+  border-radius: var(--radius-md);
+  color: oklch(35% 0.11 235);
+  background: var(--info-soft);
+  font-size: 13px;
+  font-weight: 780;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-count-badge.status-doing {
+  color: oklch(34% 0.11 160);
+  border-color: color-mix(in oklch, var(--success) 34%, var(--border));
+  background: var(--success-soft);
+}
+
+.status-count-badge.status-paused {
+  color: var(--paused);
+  border-color: color-mix(in oklch, var(--paused) 26%, var(--border));
+  background: var(--paused-soft);
+}
+
+.status-count-badge.status-done {
+  color: var(--danger);
+  border-color: color-mix(in oklch, var(--danger) 28%, var(--border));
+  background: var(--danger-soft);
 }
 
 .task-folder-title svg {
@@ -1002,6 +1037,18 @@ tbody tr:hover {
   flex: 0 0 auto;
   color: var(--subtle);
   transition: transform 180ms var(--ease-out);
+}
+
+.task-folder-toggle {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  min-height: 30px;
+  margin-left: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .task-folder-row.open .task-folder-chevron {
@@ -1526,8 +1573,10 @@ td .icon-button {
   }
 
   .task-folder-row td {
-    display: block;
-    padding: 0;
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 10px;
+    padding: 7px 0;
     border-bottom: 0;
   }
 
@@ -1538,6 +1587,26 @@ td .icon-button {
   .task-folder-button {
     min-height: 42px;
     padding: 8px 10px;
+  }
+
+  .task-folder-row td:nth-child(1) {
+    display: block;
+    padding: 0;
+  }
+
+  .task-folder-row td:nth-child(2),
+  .task-folder-row td:nth-child(4) {
+    display: flex;
+    align-items: center;
+    padding: 6px 0;
+  }
+
+  .task-folder-row td:nth-child(3) {
+    display: none;
+  }
+
+  .status-count-badge {
+    min-width: 62px;
   }
 
   td {
