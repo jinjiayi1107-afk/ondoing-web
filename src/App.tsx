@@ -266,7 +266,7 @@ function Dashboard({ session }: { session: Session }) {
     const next = { ...task, latest: '已完成', status: '已完成' as const, updated_at: nowIso() }
     const { error } = await supabase.from('tasks').upsert(next)
     if (error) return setNotice(error.message)
-    await loadAll()
+    setTasks((rows) => rows.map((row) => (row.id === next.id ? next : row)))
   }
 
   async function saveTaskProgress(task: Task, latest: string) {
@@ -283,7 +283,7 @@ function Dashboard({ session }: { session: Session }) {
     const { error } = await supabase.from('tasks').upsert(next)
     if (error) return setNotice(error.message)
     setProgressTask(null)
-    await loadAll()
+    setTasks((rows) => rows.map((row) => (row.id === next.id ? next : row)))
   }
 
   function handleTaskRowClick(task: Task) {
