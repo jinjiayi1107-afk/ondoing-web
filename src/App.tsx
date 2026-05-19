@@ -747,6 +747,9 @@ function TaskCalendar({
           const clampedEnd = end > monthEndDate ? monthEndDate : end
           const startIndex = Math.max(0, daysBetween(monthStartDate, clampedStart))
           const endIndex = Math.min(days.length - 1, daysBetween(monthStartDate, clampedEnd))
+          const duration = Math.max(1, daysBetween(clampedStart, clampedEnd))
+          const progressDates = progressNodeDates(task)
+            .filter((date) => date >= clampedStart && date <= clampedEnd)
           return (
             <div className="calendar-entry" key={task.id}>
               <button className="calendar-task-name" type="button" onDoubleClick={() => onOpenTask(task)}>
@@ -761,6 +764,19 @@ function TaskCalendar({
                   onDoubleClick={() => onOpenTask(task)}
                   aria-label={`打开任务详情：${task.project || task.id}`}
                 >
+                  {progressDates.map((date) => {
+                    const percent = duration === 1 && daysBetween(clampedStart, clampedEnd) === 0
+                      ? 50
+                      : Math.min(100, Math.max(0, (daysBetween(clampedStart, date) / duration) * 100))
+                    return (
+                      <span
+                        className="calendar-progress-dot"
+                        key={dateKey(date)}
+                        style={{ left: `${percent}%` }}
+                        title={`进展更新：${formatDate(date)}`}
+                      />
+                    )
+                  })}
                   <span className="calendar-tooltip">
                     <strong>{task.project || task.id}</strong>
                     <span>{formatDate(start)} - {formatDate(end)}</span>
@@ -781,6 +797,18 @@ function parseDateOnly(value: string | null | undefined) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return null
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function progressNodeDates(task: Task) {
+  const nodes = new Map<string, Date>()
+  const historyMatches = task.history.matchAll(/\[(\d{4}-\d{2}-\d{2})(?:[ T]\d{2}:\d{2})?\]/g)
+  for (const match of historyMatches) {
+    const date = parseDateOnly(match[1])
+    if (date) nodes.set(dateKey(date), date)
+  }
+  const latest = parseDateOnly(task.updated_at)
+  if (latest) nodes.set(dateKey(latest), latest)
+  return Array.from(nodes.values()).sort((a, b) => a.getTime() - b.getTime())
 }
 
 function monthStart(date: Date) {

@@ -599,6 +599,31 @@
   filter: saturate(1.08);
 }
 
+.calendar-progress-dot {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  width: 7px;
+  height: 7px;
+  border: 1px solid oklch(98.8% 0.008 245);
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow:
+    0 0 0 1px oklch(22.5% 0.025 248 / 0.12),
+    0 1px 3px oklch(22.5% 0.025 248 / 0.18);
+  transform: translate(-50%, -50%);
+  transition:
+    transform 140ms var(--ease-out),
+    box-shadow 140ms ease;
+}
+
+.calendar-task-line:hover .calendar-progress-dot {
+  transform: translate(-50%, -50%) scale(1.12);
+  box-shadow:
+    0 0 0 1px oklch(98.8% 0.008 245 / 0.7),
+    0 2px 6px oklch(22.5% 0.025 248 / 0.2);
+}
+
 .calendar-task-line.status-new {
   background: var(--info);
 }
