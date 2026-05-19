@@ -452,7 +452,7 @@
 
 .calendar-wrap {
   overflow: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);

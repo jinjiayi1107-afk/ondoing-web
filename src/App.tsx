@@ -699,12 +699,15 @@ function TaskCalendar({
   function handleCalendarWheel(event: React.WheelEvent<HTMLDivElement>) {
     const body = bodyScrollRef.current
     const top = topScrollRef.current
-    if (!body) return
+    if (!body || event.ctrlKey) return
     const isHorizontalGesture = Math.abs(event.deltaX) > Math.abs(event.deltaY)
     const horizontalDelta = isHorizontalGesture ? event.deltaX : event.shiftKey ? event.deltaY : 0
-    if (!horizontalDelta) return
-    body.scrollLeft += horizontalDelta
-    if (top && Math.abs(top.scrollLeft - body.scrollLeft) > 1) top.scrollLeft = body.scrollLeft
+    if (horizontalDelta) {
+      body.scrollLeft += horizontalDelta
+      if (top && Math.abs(top.scrollLeft - body.scrollLeft) > 1) top.scrollLeft = body.scrollLeft
+    } else {
+      window.scrollBy({ top: event.deltaY, left: 0, behavior: 'auto' })
+    }
     event.preventDefault()
   }
 
