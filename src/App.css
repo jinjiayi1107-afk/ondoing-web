@@ -1399,21 +1399,22 @@ td .icon-button {
 
 @media (max-width: 760px) {
   .app-shell {
-    padding-bottom: calc(74px + env(safe-area-inset-bottom));
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
   }
 
   .topbar {
-    min-height: 58px;
-    padding: 8px 12px;
+    min-height: 52px;
+    padding: 7px 10px;
   }
 
   .brand-mark {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
   }
 
   .brand h1 {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .brand p,
@@ -1422,7 +1423,8 @@ td .icon-button {
   }
 
   .top-actions .ghost-button {
-    width: 44px;
+    width: 42px;
+    min-height: 42px;
     padding: 0;
   }
 
@@ -1452,38 +1454,50 @@ td .icon-button {
     z-index: 25;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-    padding: 8px;
-    border: 1px solid var(--border);
-    border-radius: 14px;
+    gap: 6px;
+    padding: 7px;
+    border: 1px solid color-mix(in oklch, var(--border) 82%, var(--primary-soft));
+    border-radius: 16px;
     background: color-mix(in oklch, var(--surface) 94%, transparent);
     box-shadow: var(--shadow-md);
     backdrop-filter: blur(14px);
   }
 
   .nav-button {
+    display: grid;
+    grid-template-rows: 18px 16px;
     justify-content: center;
+    justify-items: center;
+    gap: 3px;
     width: 100%;
-    padding: 8px 6px;
-    font-size: 13px;
+    min-height: 50px;
+    padding: 6px 4px;
+    font-size: 11px;
+    line-height: 1;
     box-shadow: none;
   }
 
   .summary-stack {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    flex-direction: row;
     gap: 7px;
-    padding: 10px;
-    overflow: hidden;
+    padding: 9px 10px 7px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
   }
 
   .summary-card {
-    min-width: 0;
-    padding: 8px;
+    flex: 0 0 118px;
+    min-width: 118px;
+    padding: 8px 9px;
+    scroll-snap-align: start;
   }
 
   .summary-card strong {
-    font-size: 19px;
+    font-size: 17px;
+    line-height: 1.08;
   }
 
   .summary-card span {
@@ -1494,20 +1508,20 @@ td .icon-button {
   }
 
   .main {
-    padding: 10px;
+    padding: 8px;
   }
 
   .panel-head {
     align-items: stretch;
     flex-direction: column;
-    gap: 12px;
-    padding: 10px;
+    gap: 9px;
+    padding: 9px;
   }
 
   .toolbar {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
   }
 
   .search-control {
@@ -1516,16 +1530,38 @@ td .icon-button {
   }
 
   .toolbar .primary-button {
-    grid-column: 1 / -1;
+    grid-column: auto;
+  }
+
+  .toolbar .ghost-button,
+  .toolbar .primary-button {
+    min-height: 42px;
+    padding: 8px 9px;
+    font-size: 12px;
+    white-space: nowrap;
   }
 
   .content-area {
-    padding: 10px;
+    padding: 8px;
+  }
+
+  .calendar-top-scroll {
+    height: 16px;
+    border-color: color-mix(in oklch, var(--primary) 26%, var(--border));
+  }
+
+  .calendar-wrap {
+    margin-inline: -2px;
+    border-radius: 8px;
   }
 
   .calendar-grid {
-    grid-template-columns: 148px 1fr;
-    min-width: 820px;
+    grid-template-columns: 126px 1fr;
+    min-width: 700px;
+  }
+
+  .calendar-days {
+    grid-template-columns: repeat(var(--days), minmax(18px, 1fr));
   }
 
   .calendar-month-stats {
@@ -1542,6 +1578,14 @@ td .icon-button {
 
   .calendar-task-name {
     padding-inline: 7px;
+  }
+
+  .calendar-task-name strong {
+    font-size: 10.5px;
+  }
+
+  .calendar-tooltip {
+    max-width: 170px;
   }
 
   .kanban-board {
@@ -1585,7 +1629,7 @@ td .icon-button {
 
   tr {
     margin-bottom: 9px;
-    padding: 10px;
+    padding: 10px 11px;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--surface);
@@ -1636,9 +1680,9 @@ td .icon-button {
 
   td {
     display: grid;
-    grid-template-columns: 88px minmax(0, 1fr);
-    gap: 10px;
-    padding: 7px 0;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 9px;
+    padding: 6px 0;
     border-bottom: 1px solid color-mix(in oklch, var(--border) 70%, var(--surface));
     word-break: break-word;
   }
@@ -1656,6 +1700,39 @@ td .icon-button {
 
   .table-actions {
     flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  td .icon-button,
+  .table-actions .icon-button {
+    width: 42px;
+    min-height: 42px;
+  }
+
+  .task-table .task-row td[data-label="项目"],
+  .payment-table td[data-label="款项"] {
+    display: block;
+    padding-bottom: 8px;
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 760;
+    line-height: 1.35;
+  }
+
+  .task-table .task-row td[data-label="项目"]::before,
+  .payment-table td[data-label="款项"]::before {
+    content: none;
+  }
+
+  .payment-table td[data-label="金额"] {
+    color: var(--primary-strong);
+    font-size: 18px;
+    font-weight: 780;
+  }
+
+  .latest-cell {
+    font-size: 12.5px;
+    line-height: 1.42;
   }
 
   .login-wrap {
@@ -1679,9 +1756,18 @@ td .icon-button {
 
   .modal {
     width: 100%;
-    max-height: calc(100dvh - 18px);
-    padding: 18px;
+    max-height: calc(100dvh - 12px);
+    padding: 16px;
     border-radius: 16px 16px 0 0;
+  }
+
+  .modal h2 {
+    margin-bottom: 12px;
+    font-size: 18px;
+  }
+
+  .textarea {
+    min-height: 112px;
   }
 
   .two-col {
@@ -1689,9 +1775,16 @@ td .icon-button {
   }
 
   .modal-actions {
+    position: sticky;
+    bottom: -16px;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
+    margin: 14px -16px -16px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: color-mix(in oklch, var(--surface) 96%, transparent);
+    backdrop-filter: blur(12px);
   }
 }
 
@@ -1701,15 +1794,20 @@ td .icon-button {
   }
 
   .summary-stack {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-inline: 8px;
+  }
+
+  .summary-card {
+    flex-basis: 108px;
+    min-width: 108px;
   }
 
   td {
-    grid-template-columns: 76px minmax(0, 1fr);
+    grid-template-columns: 70px minmax(0, 1fr);
   }
 
   .calendar-grid {
-    grid-template-columns: 136px 1fr;
-    min-width: 760px;
+    grid-template-columns: 116px 1fr;
+    min-width: 660px;
   }
 }
