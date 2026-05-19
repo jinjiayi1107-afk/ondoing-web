@@ -973,7 +973,7 @@ tbody tr:hover {
 }
 
 .task-folder-row {
-  cursor: default;
+  cursor: pointer;
   background: color-mix(in oklch, var(--surface-muted) 60%, var(--surface));
 }
 

@@ -160,6 +160,7 @@ function Dashboard({ session }: { session: Session }) {
   const [detailTask, setDetailTask] = useState<Task | null>(null)
   const clickTimer = useRef<number | null>(null)
   const [taskStatusFilter, setTaskStatusFilter] = useState<'all' | 'incomplete'>('all')
+  const [openTaskStatuses, setOpenTaskStatuses] = useState<Set<Task['status']>>(() => new Set())
   const [paymentCurrencyFilter, setPaymentCurrencyFilter] = useState<string | null>(null)
   const [taskSort, setTaskSort] = useState<{ key: TaskSortKey; direction: SortDirection }>({
     key: 'status',
@@ -360,6 +361,15 @@ function Dashboard({ session }: { session: Session }) {
     }))
   }
 
+  function toggleTaskStatusFolder(status: Task['status']) {
+    setOpenTaskStatuses((current) => {
+      const next = new Set(current)
+      if (next.has(status)) next.delete(status)
+      else next.add(status)
+      return next
+    })
+  }
+
   function showAllTasks() {
     setView('list')
     setTaskStatusFilter('all')
@@ -497,7 +507,9 @@ function Dashboard({ session }: { session: Session }) {
                 <TaskTable
                   tasks={filteredTasks}
                   sort={taskSort}
+                  openStatuses={openTaskStatuses}
                   onSort={toggleTaskSort}
+                  onToggleStatus={toggleTaskStatusFolder}
                   onRowClick={handleTaskRowClick}
                   onRowDoubleClick={handleTaskRowDoubleClick}
                   onEdit={openEditTask}
@@ -918,14 +930,15 @@ function TaskCard({
 function TaskTable(props: {
   tasks: Task[]
   sort: { key: TaskSortKey; direction: SortDirection }
+  openStatuses: Set<Task['status']>
   onSort: (key: TaskSortKey) => void
+  onToggleStatus: (status: Task['status']) => void
   onRowClick: (task: Task) => void
   onRowDoubleClick: (task: Task) => void
   onEdit: (task: Task) => void
   onDone: (task: Task) => void
   onDelete: (task: Task) => void
 }) {
-  const [openStatuses, setOpenStatuses] = useState<Set<Task['status']>>(() => new Set())
   const groupedTasks = useMemo(
     () => STATUSES.map((status) => ({
       status,
@@ -933,15 +946,6 @@ function TaskTable(props: {
     })).filter((group) => group.rows.length > 0),
     [props.tasks],
   )
-
-  function toggleStatus(status: Task['status']) {
-    setOpenStatuses((current) => {
-      const next = new Set(current)
-      if (next.has(status)) next.delete(status)
-      else next.add(status)
-      return next
-    })
-  }
 
   return (
     <div className="table-wrap">
@@ -959,15 +963,21 @@ function TaskTable(props: {
         </thead>
         <tbody>
           {groupedTasks.map(({ status, rows }) => {
-            const isOpen = openStatuses.has(status)
+            const isOpen = props.openStatuses.has(status)
             return (
               <Fragment key={status}>
-                <tr className={`task-folder-row ${statusClass(status)} ${isOpen ? 'open' : ''}`}>
+                <tr
+                  className={`task-folder-row ${statusClass(status)} ${isOpen ? 'open' : ''}`}
+                  onClick={() => props.onToggleStatus(status)}
+                >
                   <td colSpan={2}>
                     <button
                       className="task-folder-button"
                       type="button"
-                      onClick={() => toggleStatus(status)}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        props.onToggleStatus(status)
+                      }}
                       aria-expanded={isOpen}
                     >
                       <span className="task-folder-title">
@@ -982,7 +992,10 @@ function TaskTable(props: {
                     <button
                       className="task-folder-toggle"
                       type="button"
-                      onClick={() => toggleStatus(status)}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        props.onToggleStatus(status)
+                      }}
                       aria-label={isOpen ? `收起${status}任务` : `展开${status}任务`}
                     >
                       <ChevronDown className="task-folder-chevron" size={16} />
@@ -1032,6 +1045,10 @@ function ProgressModal({
   onSave: (latest: string) => void
 }) {
   const [latest, setLatest] = useState('')
+  const saveLatest = () => {
+    const text = latest.trim()
+    if (text) onSave(text)
+  }
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -1059,12 +1076,17 @@ function ProgressModal({
             autoFocus
             value={latest}
             onChange={(event) => setLatest(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
+              event.preventDefault()
+              saveLatest()
+            }}
             placeholder="输入新的处理进展；如果填写“已完成”，状态会自动变为已完成。"
           />
         </label>
         <div className="modal-actions">
           <button className="ghost-button" onClick={onClose}>取消</button>
-          <button className="primary-button" onClick={() => onSave(latest)} disabled={!latest.trim()}>保存进度</button>
+          <button className="primary-button" onClick={saveLatest} disabled={!latest.trim()}>保存进度</button>
         </div>
       </section>
     </div>
