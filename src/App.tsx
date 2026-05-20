@@ -42,6 +42,7 @@ const statusRank = new Map(STATUSES.map((status, index) => [status, index]))
 type TaskSortKey = 'id' | 'project' | 'status' | 'latest' | 'owner' | 'updated_at'
 type PaymentSortKey = 'payment_date' | 'item' | 'amount' | 'currency' | 'note'
 type SortDirection = 'asc' | 'desc'
+type Notice = { text: string; kind: 'error' | 'success' }
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -152,15 +153,14 @@ function Dashboard({ session }: { session: Session }) {
   const [payments, setPayments] = useState<Payment[]>([])
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState(true)
-  const [notice, setNotice] = useState('')
+  const [notice, setNotice] = useState<Notice | null>(null)
   const [taskDraft, setTaskDraft] = useState<TaskDraft | null>(null)
   const [taskOriginalLatest, setTaskOriginalLatest] = useState('')
   const [paymentDraft, setPaymentDraft] = useState<PaymentDraft | null>(null)
   const [progressTask, setProgressTask] = useState<Task | null>(null)
   const [detailTask, setDetailTask] = useState<Task | null>(null)
-  const clickTimer = useRef<number | null>(null)
   const [taskStatusFilter, setTaskStatusFilter] = useState<'all' | 'incomplete'>('all')
-  const [openTaskStatuses, setOpenTaskStatuses] = useState<Set<Task['status']>>(() => new Set())
+  const [openTaskStatuses, setOpenTaskStatuses] = useState<Set<Task['status']>>(() => new Set(['待启动', '进行中']))
   const [paymentCurrencyFilter, setPaymentCurrencyFilter] = useState<string | null>(null)
   const [taskSort, setTaskSort] = useState<{ key: TaskSortKey; direction: SortDirection }>({
     key: 'status',
@@ -175,6 +175,17 @@ function Dashboard({ session }: { session: Session }) {
     void loadAll()
   }, [])
 
+  useEffect(() => {
+    if (!notice) return
+    const ms = notice.kind === 'error' ? 6000 : 3000
+    const t = window.setTimeout(() => setNotice(null), ms)
+    return () => window.clearTimeout(t)
+  }, [notice])
+
+  function notify(text: string, kind: Notice['kind'] = 'error') {
+    setNotice({ text, kind })
+  }
+
   async function loadAll() {
     setBusy(true)
     const [{ data: taskRows, error: taskError }, { data: paymentRows, error: paymentError }] = await Promise.all([
@@ -183,7 +194,7 @@ function Dashboard({ session }: { session: Session }) {
     ])
     setBusy(false)
     if (taskError || paymentError) {
-      setNotice(taskError?.message || paymentError?.message || '读取数据失败')
+      notify(taskError?.message || paymentError?.message || '读取数据失败')
       return
     }
     setTasks((taskRows || []) as Task[])
@@ -250,23 +261,26 @@ function Dashboard({ session }: { session: Session }) {
       updated_at: nowIso(),
     }
     const { error } = await supabase.from('tasks').upsert(next)
-    if (error) return setNotice(error.message)
+    if (error) return notify(error.message)
     setTaskDraft(null)
-    await loadAll()
+    setTasks((rows) => rows.some((r) => r.id === next.id) ? rows.map((r) => r.id === next.id ? next : r) : [next, ...rows])
+    notify('任务已保存', 'success')
   }
 
   async function deleteTask(task: Task) {
     if (!confirm(`确定删除「${task.project}」？`)) return
     const { error } = await supabase.from('tasks').delete().eq('id', task.id)
-    if (error) return setNotice(error.message)
+    if (error) return notify(error.message)
     setTasks((rows) => rows.filter((row) => row.id !== task.id))
+    notify('任务已删除', 'success')
   }
 
   async function quickDone(task: Task) {
     const next = { ...task, latest: '已完成', status: '已完成' as const, updated_at: nowIso() }
     const { error } = await supabase.from('tasks').upsert(next)
-    if (error) return setNotice(error.message)
+    if (error) return notify(error.message)
     setTasks((rows) => rows.map((row) => (row.id === next.id ? next : row)))
+    notify('已标记完成', 'success')
   }
 
   async function saveTaskProgress(task: Task, latest: string) {
@@ -281,23 +295,14 @@ function Dashboard({ session }: { session: Session }) {
     }
     const next: Task = { ...draft, user_id: userId }
     const { error } = await supabase.from('tasks').upsert(next)
-    if (error) return setNotice(error.message)
+    if (error) return notify(error.message)
     setProgressTask(null)
     setTasks((rows) => rows.map((row) => (row.id === next.id ? next : row)))
+    notify('进度已更新', 'success')
   }
 
   function handleTaskRowClick(task: Task) {
-    if (clickTimer.current) window.clearTimeout(clickTimer.current)
-    clickTimer.current = window.setTimeout(() => {
-      setProgressTask(task)
-      clickTimer.current = null
-    }, 180)
-  }
-
-  function handleTaskRowDoubleClick(task: Task) {
-    if (clickTimer.current) window.clearTimeout(clickTimer.current)
-    clickTimer.current = null
-    setDetailTask(task)
+    setProgressTask(task)
   }
 
   function openNewPayment() {
@@ -317,16 +322,18 @@ function Dashboard({ session }: { session: Session }) {
       updated_at: nowIso(),
     }
     const { error } = await supabase.from('payments').upsert(next)
-    if (error) return setNotice(error.message)
+    if (error) return notify(error.message)
     setPaymentDraft(null)
-    await loadAll()
+    setPayments((rows) => rows.some((r) => r.id === next.id) ? rows.map((r) => r.id === next.id ? next : r) : [next, ...rows])
+    notify('支付记录已保存', 'success')
   }
 
   async function deletePayment(payment: Payment) {
     if (!confirm(`确定删除「${payment.item}」？`)) return
     const { error } = await supabase.from('payments').delete().eq('id', payment.id)
-    if (error) return setNotice(error.message)
+    if (error) return notify(error.message)
     setPayments((rows) => rows.filter((row) => row.id !== payment.id))
+    notify('支付记录已删除', 'success')
   }
 
   async function importJson(file: File, kind: 'tasks' | 'payments') {
@@ -337,12 +344,12 @@ function Dashboard({ session }: { session: Session }) {
       const rows = parsed.map((row) => normalizeImportedTask(row, userId))
       const { error } = await supabase.from('tasks').upsert(rows)
       if (error) throw error
-      setNotice(`已导入 ${rows.length} 条任务。`)
+      notify(`已导入 ${rows.length} 条任务。`, 'success')
     } else {
       const rows = parsed.map((row) => normalizeImportedPayment(row, userId))
       const { error } = await supabase.from('payments').upsert(rows)
       if (error) throw error
-      setNotice(`已导入 ${rows.length} 条支付记录。`)
+      notify(`已导入 ${rows.length} 条支付记录。`, 'success')
     }
     await loadAll()
   }
@@ -464,7 +471,12 @@ function Dashboard({ session }: { session: Session }) {
         </aside>
 
         <main className="main">
-          {notice && <div className="notice">{notice}</div>}
+          {notice && (
+            <div className={`notice${notice.kind === 'success' ? ' notice-success' : ''}`}>
+              <span>{notice.text}</span>
+              <button className="notice-close" type="button" onClick={() => setNotice(null)} aria-label="关闭">×</button>
+            </div>
+          )}
           <section className="panel">
             <div className="panel-head">
               <h2 className="panel-title">
@@ -511,7 +523,7 @@ function Dashboard({ session }: { session: Session }) {
                   onSort={toggleTaskSort}
                   onToggleStatus={toggleTaskStatusFolder}
                   onRowClick={handleTaskRowClick}
-                  onRowDoubleClick={handleTaskRowDoubleClick}
+                  onDetail={(task) => setDetailTask(task)}
                   onEdit={openEditTask}
                   onDone={quickDone}
                   onDelete={deleteTask}
@@ -678,6 +690,11 @@ function TaskCalendar({
     return rows
   }, [visibleMonth])
 
+  const todayKey = useMemo(() => {
+    const now = new Date()
+    return formatDate(new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+  }, [])
+
   const monthStartDate = days[0]
   const monthEndDate = days[days.length - 1]
   const visibleItems = useMemo(
@@ -748,7 +765,7 @@ function TaskCalendar({
         <div className="calendar-corner">任务</div>
         <div className="calendar-days calendar-head-days">
           {days.map((day) => (
-            <div className={`calendar-day-label ${day.getDate() === 1 ? 'month-start' : ''}`} key={dateKey(day)}>
+            <div className={`calendar-day-label${day.getDate() === 1 ? ' month-start' : ''}${dateKey(day) === todayKey ? ' today' : ''}`} key={dateKey(day)}>
               <span>{day.getDate()}</span>
             </div>
           ))}
@@ -934,7 +951,7 @@ function TaskTable(props: {
   onSort: (key: TaskSortKey) => void
   onToggleStatus: (status: Task['status']) => void
   onRowClick: (task: Task) => void
-  onRowDoubleClick: (task: Task) => void
+  onDetail: (task: Task) => void
   onEdit: (task: Task) => void
   onDone: (task: Task) => void
   onDelete: (task: Task) => void
@@ -1008,8 +1025,7 @@ function TaskTable(props: {
                     key={task.id}
                     style={{ '--row-index': index } as CSSProperties}
                     onClick={() => props.onRowClick(task)}
-                    onDoubleClick={() => props.onRowDoubleClick(task)}
-                    title="单击新增进度，双击查看详情"
+                    title="单击新增进度"
                   >
                     <td data-label="ID">{task.id}</td>
                     <td data-label="项目">{task.project}</td>
@@ -1019,6 +1035,7 @@ function TaskTable(props: {
                     <td data-label="更新">{task.updated_at?.slice(0, 10) || task.created_date}</td>
                     <td data-label="操作">
                       <div className="table-actions" onClick={(event) => event.stopPropagation()}>
+                        <button className="icon-button" title="详情" aria-label="查看任务详情" onClick={() => props.onDetail(task)}><Eye size={15} /></button>
                         <button className="icon-button" title="编辑" aria-label="编辑任务" onClick={() => props.onEdit(task)}><Edit3 size={15} /></button>
                         <button className="icon-button" title="完成" aria-label="标记完成" onClick={() => props.onDone(task)}><CheckCircle2 size={15} /></button>
                         <button className="icon-button" title="删除" aria-label="删除任务" onClick={() => props.onDelete(task)}><Trash2 size={15} /></button>

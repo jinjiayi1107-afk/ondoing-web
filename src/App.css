@@ -522,6 +522,13 @@
   font-weight: 750;
 }
 
+.calendar-day-label.today {
+  color: oklch(98.8% 0.008 245);
+  background: var(--primary);
+  font-weight: 760;
+  border-radius: 3px;
+}
+
 .calendar-entry {
   display: contents;
 }
@@ -901,7 +908,7 @@ th {
 
 .task-table th:nth-child(7),
 .task-table td:nth-child(7) {
-  width: 112px;
+  width: 144px;
 }
 
 .task-table th:nth-child(1),
@@ -1301,13 +1308,45 @@ td .icon-button {
 }
 
 .notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-bottom: 12px;
-  padding: 12px 14px;
+  padding: 10px 14px;
   color: var(--warning);
   border: 1px solid color-mix(in oklch, var(--warning) 32%, var(--border));
   border-radius: var(--radius-md);
   background: var(--warning-soft);
   animation: notice-in 180ms var(--ease-out);
+}
+
+.notice-success {
+  color: var(--success);
+  border-color: color-mix(in oklch, var(--success) 32%, var(--border));
+  background: var(--success-soft);
+}
+
+.notice-close {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 17px;
+  line-height: 1;
+  opacity: 0.55;
+  transition: opacity 140ms ease, background 140ms ease;
+}
+
+.notice-close:hover {
+  opacity: 1;
+  background: color-mix(in oklch, currentColor 12%, transparent);
 }
 
 .error {
