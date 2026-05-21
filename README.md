@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-The app contains the current Supabase URL and anon public key fallback. For a cleaner setup, copy `.env.example` to `.env.local` and fill in:
+Copy `.env.example` to `.env.local` and fill in your Supabase project values:
 
 ```bash
 VITE_SUPABASE_URL=...
@@ -34,13 +34,9 @@ The import uses the logged-in user's Supabase session, so no service role key is
 
 ## GitHub Pages
 
-Create the repository `jinjiayi1107-afk/ondoing-web`, push this project to `main`, then enable GitHub Pages with:
+Create the repository `jinjiayi1107-afk/ondoing-web`, push this project to `main`, then enable GitHub Pages with GitHub Actions.
 
-- Source: Deploy from a branch
-- Branch: `main`
-- Folder: `/docs`
-
-Optional repository variables:
+Required repository secrets:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
