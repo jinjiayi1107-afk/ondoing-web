@@ -1,7 +1,7 @@
 create extension if not exists pgcrypto;
 
 create table if not exists public.tasks (
-  id text primary key,
+  id text not null,
   user_id uuid not null references auth.users(id) on delete cascade,
   project text not null default '',
   status text not null default '待启动' check (status in ('待启动', '进行中', '搁置', '已完成')),
@@ -11,6 +11,9 @@ create table if not exists public.tasks (
   created_date date not null default current_date,
   updated_at timestamptz
 );
+
+alter table public.tasks drop constraint if exists tasks_pkey;
+alter table public.tasks add constraint tasks_pkey primary key (user_id, id);
 
 create table if not exists public.payments (
   id uuid primary key default gen_random_uuid(),

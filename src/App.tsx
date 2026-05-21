@@ -38,11 +38,16 @@ import './App.css'
 const allowedEmail = '13127843093@163.com'
 const currencies = ['USD', 'EUR', 'GBP', 'CNY', 'JPY', 'KRW', 'HKD', 'TWD', 'AUD', 'CAD', 'SGD', 'CHF']
 const statusRank = new Map(STATUSES.map((status, index) => [status, index]))
+const taskConflictTarget = 'user_id,id'
 
 type TaskSortKey = 'id' | 'project' | 'status' | 'latest' | 'owner' | 'updated_at'
 type PaymentSortKey = 'payment_date' | 'item' | 'amount' | 'currency' | 'note'
 type SortDirection = 'asc' | 'desc'
 type Notice = { text: string; kind: 'error' | 'success' }
+
+function isSameTask(left: Task, right: Task) {
+  return left.user_id === right.user_id && left.id === right.id
+}
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -260,26 +265,26 @@ function Dashboard({ session }: { session: Session }) {
       history: latestChanged ? appendHistory(taskDraft, taskOriginalLatest) : taskDraft.history,
       updated_at: nowIso(),
     }
-    const { error } = await supabase.from('tasks').upsert(next)
+    const { error } = await supabase.from('tasks').upsert(next, { onConflict: taskConflictTarget })
     if (error) return notify(error.message)
     setTaskDraft(null)
-    setTasks((rows) => rows.some((r) => r.id === next.id) ? rows.map((r) => r.id === next.id ? next : r) : [next, ...rows])
+    setTasks((rows) => rows.some((r) => isSameTask(r, next)) ? rows.map((r) => isSameTask(r, next) ? next : r) : [next, ...rows])
     notify('任务已保存', 'success')
   }
 
   async function deleteTask(task: Task) {
     if (!confirm(`确定删除「${task.project}」？`)) return
-    const { error } = await supabase.from('tasks').delete().eq('id', task.id)
+    const { error } = await supabase.from('tasks').delete().eq('id', task.id).eq('user_id', userId)
     if (error) return notify(error.message)
-    setTasks((rows) => rows.filter((row) => row.id !== task.id))
+    setTasks((rows) => rows.filter((row) => !isSameTask(row, task)))
     notify('任务已删除', 'success')
   }
 
   async function quickDone(task: Task) {
     const next = { ...task, latest: '已完成', status: '已完成' as const, updated_at: nowIso() }
-    const { error } = await supabase.from('tasks').upsert(next)
+    const { error } = await supabase.from('tasks').upsert(next, { onConflict: taskConflictTarget })
     if (error) return notify(error.message)
-    setTasks((rows) => rows.map((row) => (row.id === next.id ? next : row)))
+    setTasks((rows) => rows.map((row) => (isSameTask(row, next) ? next : row)))
     notify('已标记完成', 'success')
   }
 
@@ -294,10 +299,10 @@ function Dashboard({ session }: { session: Session }) {
       updated_at: nowIso(),
     }
     const next: Task = { ...draft, user_id: userId }
-    const { error } = await supabase.from('tasks').upsert(next)
+    const { error } = await supabase.from('tasks').upsert(next, { onConflict: taskConflictTarget })
     if (error) return notify(error.message)
     setProgressTask(null)
-    setTasks((rows) => rows.map((row) => (row.id === next.id ? next : row)))
+    setTasks((rows) => rows.map((row) => (isSameTask(row, next) ? next : row)))
     notify('进度已更新', 'success')
   }
 
@@ -342,7 +347,7 @@ function Dashboard({ session }: { session: Session }) {
     if (!Array.isArray(parsed)) throw new Error('JSON 顶层必须是数组')
     if (kind === 'tasks') {
       const rows = parsed.map((row) => normalizeImportedTask(row, userId))
-      const { error } = await supabase.from('tasks').upsert(rows)
+      const { error } = await supabase.from('tasks').upsert(rows, { onConflict: taskConflictTarget })
       if (error) throw error
       notify(`已导入 ${rows.length} 条任务。`, 'success')
     } else {
