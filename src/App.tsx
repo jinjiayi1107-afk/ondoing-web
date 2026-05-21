@@ -44,6 +44,16 @@ type TaskSortKey = 'id' | 'project' | 'status' | 'latest' | 'owner' | 'updated_a
 type PaymentSortKey = 'payment_date' | 'item' | 'amount' | 'currency' | 'note'
 type SortDirection = 'asc' | 'desc'
 type Notice = { text: string; kind: 'error' | 'success' }
+type LoginMessageKind = 'error' | 'success' | 'info'
+type CalendarProgressNode = { date: Date; content: string; source: 'history' | 'latest' }
+type CalendarTooltip = {
+  title: string
+  meta: string
+  body?: string
+  kind: 'task' | 'progress'
+  x: number
+  y: number
+}
 
 function isSameTask(left: Task, right: Task) {
   return left.user_id === right.user_id && left.id === right.id
@@ -52,29 +62,56 @@ function isSameTask(left: Task, right: Task) {
 function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [passwordRecovery, setPasswordRecovery] = useState(false)
+  const [loginNotice, setLoginNotice] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setLoading(false)
     })
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession)
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
+      if (event === 'SIGNED_OUT') setPasswordRecovery(false)
     })
     return () => data.subscription.unsubscribe()
   }, [])
 
   if (loading) return <div className="login-wrap">正在连接 Supabase...</div>
-  if (!session) return <Login />
+  if (passwordRecovery) {
+    return (
+      <Login
+        key="password-recovery"
+        recoveryMode
+        initialMessage="请输入 6 位及以上的新密码。"
+        onRecoveryComplete={(message) => {
+          setLoginNotice(message)
+          setPasswordRecovery(false)
+        }}
+      />
+    )
+  }
+  if (!session) return <Login key="login" initialMessage={loginNotice} />
   return <Dashboard session={session} />
 }
 
-function Login() {
+function Login({
+  recoveryMode = false,
+  initialMessage = '',
+  onRecoveryComplete,
+}: {
+  recoveryMode?: boolean
+  initialMessage?: string
+  onRecoveryComplete?: (message: string) => void
+}) {
   const [email, setEmail] = useState(allowedEmail)
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState(initialMessage)
+  const [messageKind, setMessageKind] = useState<LoginMessageKind>(initialMessage ? 'info' : 'error')
   const [busy, setBusy] = useState(false)
+  const passwordReady = password.length >= 6
 
   async function signIn() {
     setBusy(true)
@@ -84,10 +121,18 @@ function Login() {
       password,
     })
     setBusy(false)
-    if (error) setMessage(error.message)
+    if (error) {
+      setMessageKind('error')
+      setMessage(error.message)
+    }
   }
 
   async function signUp() {
+    if (!passwordReady) {
+      setMessageKind('error')
+      setMessage('密码至少 6 位才能注册。')
+      return
+    }
     setBusy(true)
     setMessage('')
     const { error } = await supabase.auth.signUp({
@@ -98,7 +143,45 @@ function Login() {
       },
     })
     setBusy(false)
+    setMessageKind(error ? 'error' : 'success')
     setMessage(error ? error.message : '账号已创建。如果 Supabase 要求验证邮箱，请先打开邮箱确认。')
+  }
+
+  async function sendPasswordReset() {
+    const targetEmail = email.trim()
+    if (!targetEmail) {
+      setMessageKind('error')
+      setMessage('请先填写邮箱。')
+      return
+    }
+    setBusy(true)
+    setMessage('')
+    const { error } = await supabase.auth.resetPasswordForEmail(targetEmail, {
+      redirectTo: window.location.origin + import.meta.env.BASE_URL,
+    })
+    setBusy(false)
+    setMessageKind(error ? 'error' : 'success')
+    setMessage(error ? error.message : '已发送修改密码邮件，请打开邮箱中的链接继续。')
+  }
+
+  async function updatePassword() {
+    if (!passwordReady) {
+      setMessageKind('error')
+      setMessage('新密码至少需要 6 位。')
+      return
+    }
+    setBusy(true)
+    setMessage('')
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) {
+      setBusy(false)
+      setMessageKind('error')
+      setMessage(error.message)
+      return
+    }
+    await supabase.auth.signOut()
+    setBusy(false)
+    onRecoveryComplete?.('密码已更新，请使用新密码重新登录。')
   }
 
   return (
@@ -108,14 +191,16 @@ function Login() {
           <ClipboardList size={22} />
         </div>
         <h1>Ondoing 任务看板</h1>
-        <p className="muted">使用邮箱和密码登录，数据保存在 Supabase。</p>
+        <p className="muted">{recoveryMode ? '设置新密码后，请重新登录。' : '使用邮箱和密码登录，数据保存在 Supabase。'}</p>
         <div className="form-grid" style={{ marginTop: 18 }}>
+          {!recoveryMode && (
+            <label>
+              登录邮箱
+              <input className="field" value={email} onChange={(event) => setEmail(event.target.value)} />
+            </label>
+          )}
           <label>
-            登录邮箱
-            <input className="field" value={email} onChange={(event) => setEmail(event.target.value)} />
-          </label>
-          <label>
-            密码
+            {recoveryMode ? '新密码' : '密码'}
             <span className="password-field">
               <input
                 className="field"
@@ -123,7 +208,7 @@ function Login() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') void signIn()
+                  if (event.key === 'Enter') void (recoveryMode ? updatePassword() : signIn())
                 }}
               />
               <button
@@ -135,15 +220,29 @@ function Login() {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </span>
+            <span className={`password-hint ${passwordReady ? 'valid' : ''}`}>
+              密码至少 6 位{recoveryMode ? '才能修改。' : '才能注册。'}
+            </span>
           </label>
-          <button className="primary-button" type="button" onClick={signIn} disabled={busy}>
-            {busy ? '登录中...' : '登录'}
-          </button>
-          <button className="ghost-button" type="button" onClick={signUp} disabled={busy || password.length < 6}>
-            首次使用：创建账号
-          </button>
+          {recoveryMode ? (
+            <button className="primary-button" type="button" onClick={updatePassword} disabled={busy || !passwordReady}>
+              {busy ? '保存中...' : '设置新密码'}
+            </button>
+          ) : (
+            <>
+              <button className="primary-button" type="button" onClick={signIn} disabled={busy}>
+                {busy ? '登录中...' : '登录'}
+              </button>
+              <button className="ghost-button" type="button" onClick={signUp} disabled={busy || !passwordReady}>
+                首次使用：创建账号
+              </button>
+              <button className="text-button" type="button" onClick={sendPasswordReset} disabled={busy || !email.trim()}>
+                忘记/修改密码
+              </button>
+            </>
+          )}
           {message && (
-            <p className={message.includes('已创建') ? 'muted feedback' : 'error feedback'}>{message}</p>
+            <p className={`${messageKind === 'error' ? 'error' : 'muted'} feedback feedback-${messageKind}`}>{message}</p>
           )}
         </div>
       </section>
@@ -669,6 +768,7 @@ function TaskCalendar({
   onOpenTask: (task: Task) => void
 }) {
   const [visibleMonth, setVisibleMonth] = useState(() => monthStart(new Date()))
+  const [calendarTooltip, setCalendarTooltip] = useState<CalendarTooltip | null>(null)
   const topScrollRef = useRef<HTMLDivElement | null>(null)
   const bodyScrollRef = useRef<HTMLDivElement | null>(null)
   const scrollFrame = useRef<number | null>(null)
@@ -745,6 +845,43 @@ function TaskCalendar({
     event.preventDefault()
   }
 
+  function showCalendarTooltip(
+    event: React.MouseEvent<HTMLElement>,
+    content: Omit<CalendarTooltip, 'x' | 'y'>,
+  ) {
+    setCalendarTooltip({
+      ...content,
+      x: event.clientX,
+      y: event.clientY,
+    })
+  }
+
+  function moveCalendarTooltip(event: React.MouseEvent<HTMLElement>) {
+    setCalendarTooltip((current) => current ? { ...current, x: event.clientX, y: event.clientY } : current)
+  }
+
+  function showCalendarTooltipFromElement(
+    event: React.FocusEvent<HTMLElement>,
+    content: Omit<CalendarTooltip, 'x' | 'y'>,
+  ) {
+    const rect = event.currentTarget.getBoundingClientRect()
+    setCalendarTooltip({
+      ...content,
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+    })
+  }
+
+  const tooltipLeft = calendarTooltip
+    ? Math.min(Math.max(calendarTooltip.x, 136), Math.max(136, window.innerWidth - 136))
+    : 0
+  const tooltipTop = calendarTooltip
+    ? calendarTooltip.y < 118
+      ? Math.min(calendarTooltip.y + 18, window.innerHeight - 18)
+      : Math.max(calendarTooltip.y - 12, 18)
+    : 0
+  const tooltipPlacement = calendarTooltip && calendarTooltip.y < 118 ? 'below' : 'above'
+
   return (
     <div className="calendar-shell">
       <div className="calendar-toolbar">
@@ -782,8 +919,13 @@ function TaskCalendar({
           const startIndex = Math.max(0, daysBetween(monthStartDate, clampedStart))
           const endIndex = Math.min(days.length - 1, daysBetween(monthStartDate, clampedEnd))
           const duration = Math.max(1, daysBetween(clampedStart, clampedEnd))
-          const progressDates = progressNodeDates(task)
-            .filter((date) => date >= clampedStart && date <= clampedEnd)
+          const progressNodes = progressNodeDates(task)
+            .filter((node) => node.date >= clampedStart && node.date <= clampedEnd)
+          const taskTooltip = {
+            title: task.project || task.id,
+            meta: `${formatDate(start)} - ${formatDate(end)}`,
+            kind: 'task' as const,
+          }
           return (
             <div className="calendar-entry" key={task.id}>
               <button className="calendar-task-name" type="button" onDoubleClick={() => onOpenTask(task)}>
@@ -796,25 +938,41 @@ function TaskCalendar({
                   type="button"
                   style={{ gridColumn: `${startIndex + 1} / ${endIndex + 2}` }}
                   onDoubleClick={() => onOpenTask(task)}
+                  onMouseEnter={(event) => showCalendarTooltip(event, taskTooltip)}
+                  onMouseMove={moveCalendarTooltip}
+                  onMouseLeave={() => setCalendarTooltip(null)}
+                  onFocus={(event) => showCalendarTooltipFromElement(event, taskTooltip)}
+                  onBlur={() => setCalendarTooltip(null)}
                   aria-label={`打开任务详情：${task.project || task.id}`}
                 >
-                  {progressDates.map((date) => {
+                  {progressNodes.map((node, index) => {
                     const percent = duration === 1 && daysBetween(clampedStart, clampedEnd) === 0
                       ? 50
-                      : Math.min(100, Math.max(0, (daysBetween(clampedStart, date) / duration) * 100))
+                      : Math.min(100, Math.max(0, (daysBetween(clampedStart, node.date) / duration) * 100))
+                    const nodeTooltip = {
+                      title: node.source === 'latest' ? '最新进度' : '历史进度',
+                      meta: formatDate(node.date),
+                      body: node.content,
+                      kind: 'progress' as const,
+                    }
                     return (
                       <span
                         className="calendar-progress-dot"
-                        key={dateKey(date)}
+                        key={`${dateKey(node.date)}-${node.source}-${index}`}
                         style={{ left: `${percent}%` }}
-                        title={`进展更新：${formatDate(date)}`}
+                        onMouseEnter={(event) => {
+                          event.stopPropagation()
+                          showCalendarTooltip(event, nodeTooltip)
+                        }}
+                        onMouseMove={(event) => {
+                          event.stopPropagation()
+                          moveCalendarTooltip(event)
+                        }}
+                        onMouseLeave={() => setCalendarTooltip(null)}
+                        aria-label={`${nodeTooltip.title}：${nodeTooltip.body}`}
                       />
                     )
                   })}
-                  <span className="calendar-tooltip">
-                    <strong>{task.project || task.id}</strong>
-                    <span>{formatDate(start)} - {formatDate(end)}</span>
-                  </span>
                 </button>
               </div>
             </div>
@@ -822,6 +980,17 @@ function TaskCalendar({
         })}
       </div>
       </div>
+      {calendarTooltip && (
+        <div
+          className={`floating-calendar-tooltip ${calendarTooltip.kind} ${tooltipPlacement}`}
+          style={{ left: tooltipLeft, top: tooltipTop }}
+          role="status"
+        >
+          <strong>{calendarTooltip.title}</strong>
+          <span>{calendarTooltip.meta}</span>
+          {calendarTooltip.body && <p>{calendarTooltip.body}</p>}
+        </div>
+      )}
     </div>
   )
 }
@@ -833,16 +1002,28 @@ function parseDateOnly(value: string | null | undefined) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
 
-function progressNodeDates(task: Task) {
-  const nodes = new Map<string, Date>()
-  const historyMatches = task.history.matchAll(/\[(\d{4}-\d{2}-\d{2})(?:[ T]\d{2}:\d{2})?\]/g)
+function progressNodeDates(task: Task): CalendarProgressNode[] {
+  const nodes: CalendarProgressNode[] = []
+  const historyMatches = task.history.matchAll(/\[(\d{4}-\d{2}-\d{2})(?:[ T]\d{2}:\d{2})?\]\s*([^\n]+)/g)
   for (const match of historyMatches) {
     const date = parseDateOnly(match[1])
-    if (date) nodes.set(dateKey(date), date)
+    if (date) {
+      nodes.push({
+        date,
+        content: match[2]?.trim() || '进度更新',
+        source: 'history',
+      })
+    }
   }
   const latest = parseDateOnly(task.updated_at)
-  if (latest) nodes.set(dateKey(latest), latest)
-  return Array.from(nodes.values()).sort((a, b) => a.getTime() - b.getTime())
+  if (latest && task.latest.trim()) {
+    nodes.push({
+      date: latest,
+      content: task.latest.trim(),
+      source: 'latest',
+    })
+  }
+  return nodes.sort((a, b) => a.date.getTime() - b.date.getTime())
 }
 
 function monthStart(date: Date) {
