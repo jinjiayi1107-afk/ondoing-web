@@ -616,7 +616,7 @@ function Dashboard({ session }: { session: Session }) {
               {busy ? (
                 <p className="muted">正在读取数据...</p>
               ) : view === 'kanban' ? (
-                <Kanban tasks={filteredTasks} onEdit={openEditTask} onDone={quickDone} onDelete={deleteTask} />
+                <BIDashboard tasks={filteredTasks} payments={payments} onEdit={openEditTask} onDone={quickDone} onDelete={deleteTask} />
               ) : view === 'calendar' ? (
                 <TaskCalendar tasks={filteredTasks} onOpenTask={openTaskFromCalendar} />
               ) : view === 'list' ? (
@@ -1063,69 +1063,194 @@ function formatDate(date: Date) {
   return `${y}-${m}-${d}`
 }
 
-function Kanban({
+function BIDashboard({
   tasks,
+  payments,
   onEdit,
   onDone,
   onDelete,
 }: {
   tasks: Task[]
+  payments: Payment[]
   onEdit: (task: Task) => void
   onDone: (task: Task) => void
   onDelete: (task: Task) => void
 }) {
+  const totalTasks = tasks.length
+  const incomplete = tasks.filter((task) => task.status !== '已完成').length
+  const done = totalTasks - incomplete
+  const doing = tasks.filter((task) => task.status === '进行中').length
+  const staleTasks = tasks.filter((task) => task.status !== '已完成' && daysSince(task.updated_at || task.created_date) >= 14).length
+  const completionRate = totalTasks ? Math.round((done / totalTasks) * 100) : 0
+  const month = monthStart(new Date())
+  const monthStarted = tasks.filter((task) => {
+    const started = parseDateOnly(task.created_date)
+    return started ? isSameMonth(started, month) : false
+  }).length
+  const monthCompleted = tasks.filter((task) => {
+    const finished = task.status === '已完成' ? parseDateOnly(task.updated_at) : null
+    return finished ? isSameMonth(finished, month) : false
+  }).length
+  const statusRows = STATUSES.map((status) => {
+    const count = tasks.filter((task) => task.status === status).length
+    return { status, count, percent: totalTasks ? Math.round((count / totalTasks) * 100) : 0 }
+  })
+  const ownerRows = Array.from(tasks.reduce((map, task) => {
+    const owner = task.owner.trim() || '未指定'
+    map.set(owner, (map.get(owner) || 0) + 1)
+    return map
+  }, new Map<string, number>()))
+    .map(([owner, count]) => ({ owner, count, percent: totalTasks ? Math.round((count / totalTasks) * 100) : 0 }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6)
+  const paymentRows = Array.from(payments.reduce((map, payment) => {
+    if (typeof payment.amount !== 'number') return map
+    map.set(payment.currency, (map.get(payment.currency) || 0) + payment.amount)
+    return map
+  }, new Map<string, number>()))
+    .map(([currency, total]) => ({ currency, total }))
+    .sort((a, b) => b.total - a.total)
+  const maxPayment = Math.max(...paymentRows.map((row) => row.total), 0)
+  const focusTasks = [...tasks]
+    .filter((task) => task.status !== '已完成')
+    .sort((a, b) => daysSince(b.updated_at || b.created_date) - daysSince(a.updated_at || a.created_date))
+    .slice(0, 8)
+
   return (
-    <div className="kanban-board">
-      {STATUSES.map((status) => {
-        const rows = tasks.filter((task) => task.status === status)
-        return (
-          <div className="kanban-column" key={status}>
-            <div className="column-head">
-              <span>{status}</span>
-              <span>{rows.length}</span>
-            </div>
-            {rows.map((task) => (
-              <TaskCard task={task} key={task.id} onEdit={onEdit} onDone={onDone} onDelete={onDelete} />
+    <div className="bi-dashboard">
+      <section className="bi-hero surface">
+        <div>
+          <p className="eyebrow">业务总览</p>
+          <h2>任务与支付 BI 看板</h2>
+          <span className="muted">按当前搜索条件统计任务，支付金额按全部记录汇总。</span>
+        </div>
+        <div className="bi-score">
+          <strong>{completionRate}%</strong>
+          <span>完成率</span>
+        </div>
+      </section>
+
+      <section className="bi-kpi-grid">
+        <MetricCard label="全部任务" value={totalTasks} note={`本月新增 ${monthStarted}`} />
+        <MetricCard label="未完成" value={incomplete} note={`进行中 ${doing}`} tone="info" />
+        <MetricCard label="已完成" value={done} note={`本月完成 ${monthCompleted}`} tone="success" />
+        <MetricCard label="14天未更新" value={staleTasks} note="需优先跟进" tone={staleTasks ? 'danger' : 'success'} />
+      </section>
+
+      <section className="bi-grid">
+        <article className="bi-panel surface">
+          <div className="bi-panel-head">
+            <h3>任务状态分布</h3>
+            <span>{totalTasks} 项</span>
+          </div>
+          <div className="bi-bars">
+            {statusRows.map((row) => (
+              <div className="bi-bar-row" key={row.status}>
+                <div className="bi-bar-label">
+                  <span className={`status-dot ${statusClass(row.status)}`} />
+                  <strong>{row.status}</strong>
+                  <span>{row.count}</span>
+                </div>
+                <div className="bi-bar-track">
+                  <span className={`bi-bar-fill ${statusClass(row.status)}`} style={{ width: `${Math.max(row.percent, row.count ? 6 : 0)}%` }} />
+                </div>
+                <em>{row.percent}%</em>
+              </div>
             ))}
           </div>
-        )
-      })}
+        </article>
+
+        <article className="bi-panel surface">
+          <div className="bi-panel-head">
+            <h3>负责人任务量</h3>
+            <span>Top {ownerRows.length}</span>
+          </div>
+          <div className="bi-bars compact">
+            {ownerRows.length ? ownerRows.map((row) => (
+              <div className="bi-bar-row" key={row.owner}>
+                <div className="bi-bar-label">
+                  <strong>{row.owner}</strong>
+                  <span>{row.count}</span>
+                </div>
+                <div className="bi-bar-track">
+                  <span className="bi-bar-fill owner" style={{ width: `${Math.max(row.percent, 6)}%` }} />
+                </div>
+                <em>{row.percent}%</em>
+              </div>
+            )) : <p className="muted">暂无负责人数据。</p>}
+          </div>
+        </article>
+
+        <article className="bi-panel surface">
+          <div className="bi-panel-head">
+            <h3>支付币种汇总</h3>
+            <span>{payments.length} 条</span>
+          </div>
+          <div className="bi-bars compact">
+            {paymentRows.length ? paymentRows.map((row) => (
+              <div className="bi-bar-row" key={row.currency}>
+                <div className="bi-bar-label">
+                  <strong>{row.currency}</strong>
+                  <span>{row.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="bi-bar-track">
+                  <span className="bi-bar-fill payment" style={{ width: `${maxPayment ? Math.max((row.total / maxPayment) * 100, 6) : 0}%` }} />
+                </div>
+              </div>
+            )) : <p className="muted">暂无支付记录。</p>}
+          </div>
+        </article>
+
+        <article className="bi-panel surface">
+          <div className="bi-panel-head">
+            <h3>待跟进任务</h3>
+            <span>{focusTasks.length} 项</span>
+          </div>
+          <div className="bi-task-list">
+            {focusTasks.length ? focusTasks.map((task) => (
+              <div className={`bi-task-item ${statusClass(task.status)}`} key={task.id}>
+                <div>
+                  <strong>{task.project || '未命名任务'}</strong>
+                  <span>{task.latest || task.id}</span>
+                </div>
+                <span className={`status-badge ${statusClass(task.status)}`}>{task.status}</span>
+                <em>{daysSince(task.updated_at || task.created_date)} 天</em>
+                <div className="table-actions">
+                  <button className="icon-button" title="编辑" aria-label="编辑任务" onClick={() => onEdit(task)}>
+                    <Edit3 size={15} />
+                  </button>
+                  <button className="icon-button" title="完成" aria-label="标记完成" onClick={() => onDone(task)}>
+                    <CheckCircle2 size={15} />
+                  </button>
+                  <button className="icon-button" title="删除" aria-label="删除任务" onClick={() => onDelete(task)}>
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            )) : <p className="muted">当前没有未完成任务。</p>}
+          </div>
+        </article>
+      </section>
     </div>
   )
 }
 
-function TaskCard({
-  task,
-  onEdit,
-  onDone,
-  onDelete,
+function MetricCard({
+  label,
+  value,
+  note,
+  tone = 'default',
 }: {
-  task: Task
-  onEdit: (task: Task) => void
-  onDone: (task: Task) => void
-  onDelete: (task: Task) => void
+  label: string
+  value: number
+  note: string
+  tone?: 'default' | 'info' | 'success' | 'danger'
 }) {
-  const className = task.status === '已完成' ? 'done' : task.status === '进行中' ? 'doing' : task.status === '搁置' ? 'paused' : ''
   return (
-    <article className={`task-card ${className}`}>
-      <h3>{task.project || '未命名任务'}</h3>
-      {task.latest && <p className="muted" style={{ marginBottom: 8 }}>{task.latest}</p>}
-      <div className="meta-row">
-        <span className="badge">{task.id}</span>
-        {task.owner && <span>{task.owner}</span>}
-        <span>{daysSince(task.updated_at || task.created_date)} 天未更新</span>
-      </div>
-      <div className="table-actions" style={{ marginTop: 10 }}>
-        <button className="icon-button" title="编辑" aria-label="编辑任务" onClick={() => onEdit(task)}>
-          <Edit3 size={15} />
-        </button>
-        <button className="icon-button" title="完成" aria-label="标记完成" onClick={() => onDone(task)}>
-          <CheckCircle2 size={15} />
-        </button>
-        <button className="icon-button" title="删除" aria-label="删除任务" onClick={() => onDelete(task)}>
-          <Trash2 size={15} />
-        </button>
-      </div>
+    <article className={`metric-card surface ${tone}`}>
+      <span>{label}</span>
+      <strong>{value.toLocaleString()}</strong>
+      <em>{note}</em>
     </article>
   )
 }
