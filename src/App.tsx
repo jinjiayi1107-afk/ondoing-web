@@ -1563,6 +1563,8 @@ function PaymentModal({
   onClose: () => void
   onSave: () => void
 }) {
+  const [amountText, setAmountText] = useState(draft.amount?.toString() ?? '')
+
   return (
     <div className="modal-backdrop">
       <section className="modal">
@@ -1588,9 +1590,12 @@ function PaymentModal({
             金额
             <input
               className="field"
-              value={draft.amount ?? ''}
+              inputMode="decimal"
+              value={amountText}
               onChange={(event) => {
-                const parsed = parseAmount(event.target.value)
+                const raw = event.target.value
+                const parsed = parseAmount(raw)
+                setAmountText(raw)
                 setDraft({
                   ...draft,
                   amount: parsed.amount,
